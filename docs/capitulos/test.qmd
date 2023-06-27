@@ -1,0 +1,62 @@
+---
+title: "Analise Exploratoria"
+author: "Mikael M Coletto"
+date: "01/05/2023"
+toc: true
+execute:
+  warning: false
+cache: FALSE
+lang: pt
+theme: cerulean
+reference-location: margin
+code-fold: true
+code-tools: 
+    source: https://github.com/mikael04/steam-dashboard.git
+params:
+  run_all_code: "F"
+  overwrite_tables: "F"
+---
+
+```{r setup, include=FALSE}
+## Definindo pasta padrão
+knitr::opts_knit$set(root.dir = '/mnt/Netac-Dados/Projetos/R/steam-dashboard',
+                     cache.lazy = FALSE)
+path_quarto <- "../../"
+## Definindo
+source(here::here("R/fct-auxiliares/fct_order_strings.R"))
+source(here::here("R/fct-auxiliares/fct_filter_top.R"))
+source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+## Librarys
+library(ggplot2)
+library(dplyr)
+
+## Switch para reescrever tabelas iniciais
+# switch_overwrite_tables <- T
+
+print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
+```
+
+# Análise dos dados da Steam
+
+## Introdução
+
+A ideia desta análise é ilustrar os conhecimentos adquiridos em R, começando com uma análise exploratória dos dados e tentando trazer alguns insights relacionados à jogos de sucesso no mercado. Para isso vou passar pelas etapas de elaboração do objetivo, trabalho no tratamento e limpeza dos dados, fazer análises de variáveis de interesse individualmente e depois cruzando algumas delas para tentar traçar algumas conclusões, que, por fim, podem sugerir alguns caminhos para empresas que pretendem lançar seus jogos terem sucesso na Steam.
+
+## O objetivo
+
+Somos um estúdio de jogos e queremos analisar:
+
+1.  Qual gênero/categoria de jogo tem mais sucesso na steam, definindo sucesso como melhores avaliações;
+
+2.  Também queremos analisar qual faixa de preço é mais interessante para o lançamento desse novo jogo, como a faixa de preço se relaciona com o número de vendas e com a categoria.
+
+## Análise exploratória das bases de dados
+
+Inicialmente irei fazer uma análise exploratória de algumas bases de dados e suas variáveis que podem ser interessantes para determinar sucesso de um jogo, a faixa de preço, a quantidade de vendas e relacionar essas questões aos gêneros e categorias. Foram feitas análises de três bases de dados, a primeira mais completa, e as duas seguintes mais focadas em reviews de usuários. São bases de dadas extraídas do Kaggle que serão utilizadas para o estudo.
+
+### Base de dados - 1
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: "docs/Analise/capitulos/1-analise-base-1.qmd"
+```

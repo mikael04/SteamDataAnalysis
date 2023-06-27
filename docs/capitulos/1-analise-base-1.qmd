@@ -1,0 +1,179 @@
+---
+params:
+  overwrite_tables: "F"
+---
+```{r, header-base-1, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado na análise da primeira base
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 11/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+library(ggplot2)
+# # library(janitor)
+source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+```
+
+Esta base de dados se encontra no Kaggle, através deste link:
+
+<https://www.kaggle.com/datasets/fronkongames/steam-games-dataset>
+
+
+
+#### Skimr
+
+Usarei o Skimr para a base de dados completa e verificarei quais dados podem ser melhor investigados. Essa função faz um resumo geral das variáveis e é bem útil para uma primeira visualização.
+
+```{r, mongoCon, echo = T, result = 'hide', message = F, warning = F, error = F}
+# ## Dados de conexão com o banco da Steam no mongo
+# mongolite::mongo_options(log_level = 1)
+# mongo_db_user <- config::get("mongo_db_user", file = "config/config.yml")
+# mongo_db_password <- config::get("mongo_db_password", file = "config/config.yml")
+# mongo_db_url_extra <- config::get("mongo_db_url_extra", file = "config/config.yml")
+# mongo_database <- config::get("mongo_database", file = "config/config.yml")
+# mongo_collection <- config::get("mongo_collection_full", file = "config/config.yml")
+# 
+# url_srv <- paste0("mongodb+srv://", mongo_db_user, ":", mongo_db_password, mongo_db_url_extra)
+# mongo_db <- mongolite::mongo(collection = mongo_collection, db = mongo_database, url = url_srv, verbose = TRUE)
+# 
+# ## Lendo e criando um dataframe com os dados do mongoDB
+# df_base_1 <- as.data.frame(mongo_db$find())
+
+df_base_1 <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+```
+
+```{r, skimr}
+# skimr::skim(df_base_1)
+```
+
+Por sua complexidade e tamanho de análises, para a versão final deste relatório foi optada por não apresentar a saída da função `skimr`.
+
+#### Limpezas e padronizações
+
+Para padronizar os nomes das variáveis, será utilizado o pacote `janitor`, que é bastante útil na hora de limpeza e padronização do banco de dados.
+
+```{r, cleanNames}
+## Usaremos a função do Janitor para editar os nomes das colunas e torná-las mais fáceis de serem manipuladas
+## E então faremos a seleção das colunas que serão analisadas
+
+df_selected <- df_base_1 |> 
+  janitor::clean_names() |>
+  dplyr::select(app_id, name, developers, publishers, categories, genres, tags, release_date, estimated_owners, peak_ccu, price, windows, mac, linux, metacritic_score, user_score, positive, negative, recommendations, average_playtime_forever, median_playtime_forever, average_playtime_two_weeks, median_playtime_two_weeks) |> 
+  dplyr::mutate(release_date = lubridate::mdy(release_date)) 
+```
+
+##### Removendo Softwares e não jogos
+
+Após a análise inicial, foi detectado que existiam nesta base de dados softwares que não eram considerados jogos, portanto eles serão excluídos para que não comprometam as futuras análises.
+
+Vamos utilizar a variável `genres` e `tags` para identificar os gêneros que não são jogos.
+
+```{r, genresNotGames}
+## Categorias consideradas não jogos
+notGames <- c("Utilities", "Design & Illustration", "Animation & Modeling", "Game Development", "Photo Editing", "Audio Production", "Video Production", "Accounting", "Movie", "Documentary", "Episodic", "Short", "Tutorial", "360 Video")
+
+notGames_col <- paste0(notGames, collapse = "|")
+
+## Filtrando categorias consideradas não jogos
+### Filtrando por gêneros
+df_selected_tags <- func_filter_not_games(df_selected, notGames_col, mode = 1)
+### Filtrando por tags
+df_selected_tags <- func_filter_not_games(df_selected_tags, notGames_col, mode = 2)
+
+```
+
+##### Escolhendo as variáveis
+
+E então, análisando as tabelas geradas pelo `skimr`, selecionei algumas variáveis que seriam analisadas mais profundamente. A começar pelas variáveis relativas a notas, críticas e avaliações dos jogos.
+
+```{r, varReview}
+
+ggplot(df_selected_tags, aes(metacritic_score)) +
+  geom_histogram(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Histograma da variável Metacritic Score",
+       x = "Score",
+       y = "Contagem")
+```
+
+Pelo Histograma pude ver que a variável *Metacritic Score* (renomeada para metacritic_score) não é muito interessante, seu preenchimento foi visto como completo pelo skim, porém quase em sua totalidade as notas são "0", ou seja, não temos uma nota definida para avaliar os jogos.
+
+Outras variáveis de avaliação como *Reviews*, *User Score*, e *Recommendations*, foram analisadas porém apresentaram pouco úteis, ou por terem um preenchimento muito baixo ou por envolverem outros tipos de dados (que não fossem uma avaliação direta).
+
+##### Nova métrica de avaliações
+
+As únicas métricas de avaliação nesta base que parecem interessantes, são as de avaliações positivas e negativas (as variáveis *Positive* e *Negative*).
+
+Por isso, decidi criar uma nova variável, que mede a taxa de avaliações positivas e negativas de um jogo, chamada *overall_rate*.
+
+```{r, var_overallRate}
+df_selected_tags$overall <- df_selected_tags$positive*100/(df_selected_tags$positive + df_selected_tags$negative)
+
+df_selected_tags$overall[1:100]
+```
+
+Analisando uma parte da base de dados com essa nova métrica, verifiquei que a tabela possuía dados `NaN` e valores de 100, respectivamente, resultados de de divisões $0/0$ e de jogos sem avaliação negativa. Os números NaN serão removidos, já que não serão úteis para avaliação dos jogos, os números 100 serão investigados mais a fundo.
+
+##### Filtrando dados inválidos
+
+Após as remoções anteriores, também achei pertinente fazer mais algumas filtragens na base de dados.
+
+```{r, filtro-base-1}
+
+## Criando uma variável do tipo fator para número de donos estimados
+levels_owners <- c("0 - 0", "0 - 20000", "20000 - 50000", "50000 - 100000", 
+                   "100000 - 200000", "200000 - 500000", "500000 - 1000000",
+                   "1000000 - 2000000", "2000000 - 5000000", "5000000 - 10000000", 
+                   "10000000 - 20000000", "20000000 - 50000000", "50000000 - 100000000",
+                   "100000000 - 200000000")
+
+df_selected_tags$estimated_owners <- as.factor(df_selected_tags$estimated_owners)
+df_selected_tags$estimated_owners <- factor(df_selected_tags$estimated_owners, levels = levels_owners)
+
+## Verificando dados que serão considerados inválidos
+df_100 <- df_selected_tags |> 
+  dplyr::filter(positive < 20 & (overall == 100)) |> 
+  dplyr::select(name, publishers, categories, genres, release_date, estimated_owners, positive, negative, overall)
+
+## Filtrando regras
+df_selected_tags <- df_selected_tags |> 
+  dplyr::filter(positive >= 100 & 
+                  ((as.integer(estimated_owners) > 2 & price > 0) | 
+                     (as.integer(estimated_owners) > 3 & price == 0)) &
+                  overall < 100)
+
+# skimr::skim(df_selected_tags)
+```
+
+Os filtros foram definidos para que tenhamos uma base mais confiável. As regras para que um jogo se mantivesse na base são:
+
+1.  O jogo precisa ter pelo menos 20 avaliações positivas.
+
+2.  O jogo precisa ter pelo menos uma avaliação negativa (para que a avaliação não seja 100% positiva).
+
+3.  O jogo precisa ter pelo menos 50 mil usuários no caso de ser gratuito, e pelo menos 20 mil usuários para jogos pagos.
+
+##### Deduplicação
+
+Depois da análise do novo banco de dados filtrado, descobri mais um problema que precisava ser tratado, dados duplicados. Verificando pelo nome dos jogos, encontrei jogos duplicados, mas que possuíam IDs, avaliações e às vezes preços diferentes. Olhando com mais cuidado pelo próprio site da Steam e pelo site SteamDB ([SteamDB](https://steamdb.info)), concluí que se tratavam de dados referentes à novas versões (jogo do ano, versão de luxo, etc), jogos que possuíam versões diferentes de modo Singleplayer e Multiplayer (como por exemplo nos jogos da série "Call of Duty") e mini-expansões, pacotes de skins (aparências para armas e personagens), pacotes de itens pagos como benefícios no jogos, etc. Portanto, decidi remover essas duplicatas, e usarei como base dados de número de usuários (o jogo base muito provavelmente vai ter mais usuários) e número de jogadores.
+
+```{r, dedup}
+df_dupli <- df_selected_tags |> 
+  janitor::get_dupes(name, developers)
+
+df_selected_tags <- df_selected_tags |> 
+  dplyr::arrange(name, desc(as.integer(estimated_owners)), desc(overall)) |> 
+  dplyr::distinct(name, .keep_all = T)
+if(params$overwrite_tables == "T"){
+  data.table::fwrite(df_selected_tags, here::here("data-raw/created-tables/db-games-1.csv"))
+}
+```
+
+Então esta nova regra criada respeitará primeiro o número de jogadores, o jogo que possuir mais jogadores permanecerá na base, e segundo, em caso de empate no número de jogadores, será mantido o jogo com melhor avaliação.
+
+#### Finalizando limpeza e transformação
+
+E então, finalizando as filtragens, limpezas e transformações, tenho por fim uma base mais confiável para as análises que virão.

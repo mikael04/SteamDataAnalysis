@@ -1,0 +1,88 @@
+```{r, header-unindo-bases, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado na união das duas bases utilizadas
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 12/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+library(jsonlite)
+```
+
+Como comentado das discrepâncias entre as bases de dados, eu considerei algumas faltas de avaliações/jogadores como inconsistentes na base 1, e assim decidi utilizar a base 3 com a adição dos jogos não presentes nela, que estão presentes na base 1.
+
+```{r, joinDBs}
+
+## Base 1
+df_selected_gen <- data.table::fread(here::here("data-raw/created-tables/db-games-1.csv"))
+## Base 3
+df_games_selTags <- data.table::fread(here::here("data-raw/created-tables/db-games-3.csv"))
+
+## Jogos presentes na base 1 que não estão na base 3
+df_antijoin_games <- dplyr::anti_join(df_selected_gen, df_games_selTags, by = "app_id") |> 
+  dplyr::mutate(rating = 0, price_final = 0, price_original = 0, discount = 0, steam_deck = F, 
+                db1 = T, release_date = lubridate::ymd(release_date)) |> 
+  dplyr::mutate(user_reviews = positive+negative) |>
+  dplyr::select(app_id, title = name, date_release = release_date, win = windows, mac, linux, rating,
+                positive_ratio = overall, user_reviews, price_final = price, price_original,
+                discount, steam_deck, db1)
+
+## Jogos da base 3
+df_games_selTags <- df_games_selTags |> 
+dplyr::mutate(db1 = F, date_release = lubridate::ymd(date_release)) |> 
+  dplyr::select(-tags)
+# colnames(df_games_selTags)
+# colnames(df_antijoin_games)
+
+## Unindo base 3 e jogos da base 1 não presentes na base 3
+df_all_games <- rbind(df_games_selTags, df_antijoin_games, fill = T)
+```
+
+Também foi analisado novamente as duplicatas que foram geradas, e novamente foi decidido mantê-lás, já que representavam, ou jogos que possuíam o mesmo nome, mas são jogos diferentes, ou são diferentes versões dos jogos (versão normal e versão "game of the year" ou um relançamento por exemplo).
+
+##### Adicionando informações
+
+Agora adicionaremos à base agrupada os dados referentes às informações do jogo, inicialmente adicionando através de outro arquivo presente nos arquivos da base 3.
+
+```{r, addingInfo}
+run_join <- T
+if(run_join){
+  # library(jsonlite)
+  out <- lapply(readLines(here::here("data-raw/steam-data/db-3/games_metadata.json")), fromJSON)
+  
+  ## Unindo o terceiro elemento da lista
+  for(i in 1:length(out)){
+    purrr::pluck(out, i, 3)<-paste0(purrr::pluck(out, i, 3), collapse = ",")
+  }
+  
+  ## Transformando em um dataframe para unir à outra base
+  df_metadata <- do.call(rbind.data.frame, out)
+  
+  ## Adicionando coluna de tags do df_metadata, e adicionando colunas de categoria, genero e tags extra do df anterior
+  df_all_games <- dplyr::left_join(df_all_games, df_metadata, by = "app_id") |> 
+    dplyr::select(-description) |> 
+    dplyr::left_join(df_selected_gen |> 
+                       dplyr::select(app_id, categories, genres, tags) |> 
+                       dplyr::rename(tags_extra = tags),
+                     by = "app_id")
+  
+  ## Escrevendo nova base para não precisar rodar os joins e comparações todas as vezes
+  if(!dir.exists("data-raw/created-tables/")){
+    dir.create("data-raw/created-tables/")
+  }
+  if(params$overwrite_tables == "T"){
+    data.table::fwrite(df_all_games, here::here("data-raw/created-tables/db-reviews-join.csv"))
+  }
+  
+}else{
+  df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-reviews-join.csv")) |> 
+    dplyr::mutate(categories = ifelse(categories == "", NA, categories),
+                  genres = ifelse(genres == "", NA, genres),
+                  tags = ifelse(tags == "", NA, tags),
+                  tags_extra = ifelse(tags_extra == "", NA, tags_extra))
+}
+
+
+```

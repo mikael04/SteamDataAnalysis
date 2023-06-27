@@ -1,0 +1,68 @@
+```{r, header-dif-entre-bases, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado em verificar a diferença entre as bases
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 12/03/23
+########################################################################################## #
+```
+
+Depois da seleção e limpeza das duas tabelas relacionadas a informações de jogos, decidi investigar as diferenças entre as bases de dados, para tentar entender qual seria o processo de ajuste necessário para a união delas.
+
+Usei o `anti_join` como método para avaliar os jogos que estávam apenas em uma das bases e não na outra. Percebi que a base 1 excluíu muitos jogos devido aos filtros aplicados, principalmente os filtros relacionados a avaliações positivas e número de jogadores. Investigando os mesmos jogos na Base 3, que não possui informações do número de jogadores, cheguei à números bem mais altos de avaliação, e levando em conta o conhecimento prévio sobre esses jogos, interpretei como uma certa inconsistência nos dados da base 1. 
+
+```{r, compareDBs, eval=FALSE}
+# ## Base 1
+# df_selected_gen <- data.table::fread(here::here("data-raw/created-tables/db-games-1.csv"))
+# ## Base 3
+# df_games_selTags <- data.table::fread(here::here("data-raw/created-tables/db-games-3.csv"))
+
+# Antijoins através do ID, analisando diferenças entre bases
+
+## Verificando jogos que estão na base 1 mas não na base 3, base "raw"
+
+games_antijoin_base_1_ext <- dplyr::anti_join(df_selected[, c("app_id", "name", "positive", "release_date")], df_base_3[, c("app_id", "title")],
+                                              by = "app_id")
+
+
+## Verificando jogos que estão na base 3 mas não na base 1, base "raw"
+
+games_antijoin_base_3_ext <- dplyr::anti_join(df_base_3[, c("app_id", "title", "user_reviews")], df_selected[, c("app_id", "name", "positive", "release_date")],
+                                              by = "app_id")
+
+# Verificando jogos após filtragem de bases
+
+## Verificando jogos que estão na base 1 mas não na base 3, base processada
+
+games_antijoin_base_1_filt <- dplyr::anti_join(df_selected_gen[, c("app_id", "name", "positive", "release_date")], df_games_selTags[, c("app_id", "title")],
+                                              by = "app_id")
+
+## Verificando jogos que estão na base 3 mas não na base 1, base processada
+
+games_antijoin_base_3_filt <- dplyr::anti_join(df_games_selTags[, c("app_id", "title", "user_reviews", "date_release")], df_selected_gen[, c("app_id", "name")],
+                                                by = "app_id")
+
+# ## Antijoin após remover os IDs não encontrados, utilizando o nome dos jogos
+# games_antijoin_games_name <- dplyr::anti_join(df_games[, c("app_id", "title", "user_reviews", "date_release")], df_selected_gen[, c("app_id", "name")], by = c("title" = "name"))
+# 
+# ## Verificando os jogos que foram excluídos pelo ID mas possuíam nomes iguais
+# games_antijoin_games <- dplyr::anti_join(games_antijoin_games_app_id, games_antijoin_games_name)
+
+# 
+# games_antijoin_sel_name <- dplyr::anti_join(games_antijoin_sel_app_id, df_games[, c("app_id", "title")], by = c("name" = "title"))
+# 
+# ## Verificando os jogos que foram excluídos pelo ID mas possuíam nomes iguais
+# games_antijoin_sel <- dplyr::anti_join(games_antijoin_sel_app_id, games_antijoin_sel_name)
+
+df_games <- df_games |> 
+  dplyr::rename(name = title)
+
+games_fulljoin <- dplyr::full_join(df_games_selTags[, c("app_id", "title", "user_reviews", "date_release")], df_selected_gen[, c("app_id", "name", "release_date")], by = "app_id")
+
+games_fulljoin <- dplyr::full_join(df_games_selTags, df_selected_gen, by = "app_id") |> 
+  dplyr::select(app_id, name_games = name, rating, positive_ratio, user_reviews, 
+                name_sel = name, overall, positive, negative, recommendations,
+                date_release, release_date)
+
+```

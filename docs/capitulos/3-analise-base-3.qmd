@@ -1,0 +1,108 @@
+```{r, header-base-3, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado na análise da terceira base
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 13/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+library(dplyr)
+library(jsonlite)
+source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+```
+
+Esta base de dados se encontra no Kaggle, através deste link:
+
+<https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam>
+
+Após a exclusão da segunda base de dados, decidi verificar a última que havia encontrado de jogos da Steam.
+
+```{r, db-3}
+df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
+df_base_3 <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+
+# df_base_3_users <- data.table::fread(here::here("data-raw/steam-data/db-3/users.csv"))
+
+```
+
+Na análise inicial desta nova bases, concluí que ela possuía dados atualizados dos jogos, mas possui menos dados que a primeira base analisada. Não temos informações de línguas suportadas (tanto legendas quanto áudios), dados de pico de usuários, dados de DLC, dados de empresas (como sites, e-mail de suporte, imagem do jogo), dados do Metacritic e dados de tempo de jogo. Então utilizarei ela apenas para verificar a avaliação dos usuários (através das colunas `positive_ratio` e `user_reviews`).
+
+##### Filtrando dados inválidos
+
+Aplicando novamente os filtros utilizados para as bases anteriores, mas adaptando para as colunas desta nova base. Agora, utilizarei a variável `positive_ratio` para filtrar as avaliações positivas e `user_reviews` para o número de reviews. Os primeiros filtros definidos foram:
+
+1.  O jogo precisa ter pelo menos 20 avaliações positivas.
+
+2.  O jogo precisa ter pelo menos uma avaliação negativa (para que a avaliação não seja de 100%).
+
+3.  O jogo precisa ter pelo menos 50 mil usuários no caso de ser gratuito, e pelo menos 20 mil usuários para jogos pagos.
+
+```{r, filtro-base-3}
+df_base_3 <- df_base_3 |> 
+  dplyr::filter(positive_ratio < 100 & user_reviews >= 100)
+```
+
+E para o terceiro filtro, a ideia seria fazer uma contagem através da tabela de reviews para verificar a quantidade do número de usuários por jogo. Que é a única tabela que possui os *IDs* de jogos e jogadores numa única tabela.
+
+```{r, filtro-base-3-users}
+df_games_users <- df_base_3_reviews |> 
+  dplyr::summarise(count = n(), .by = app_id) |> 
+  dplyr::ungroup()
+```
+
+Porém, ao contar quantos jogos distintos haviam na tabela de reviews, tivemos o número de apenas `r nrow(df_games_users)`, ou seja, na base temos poucas informações sobre a quantidade de usuários segundo a tabela de reviews, portanto este terceiro filtro não será aplicado.
+
+##### Deduplicação
+
+O mesmo processo de deduplicação precisou ser feito na nova base.
+
+```{r, dedup-newbase}
+df_dupli <- df_base_3 |> 
+  janitor::get_dupes(title)
+```
+
+Porém, ao contrário da base anterior, neste caso todos os jogos "duplicados" se tratavam de jogos diferentes, com diferentes avaliações, diferentes empresas e diferentes IDs, mas que possuíam o mesmo nome, portanto nenhum deles foi removido.
+
+##### Adicionando coluna de tags através de outra base (também da base 3)
+
+O próximo passo, após a verificação inicial da base 3, seria adicionar informações relacionadas às classificações dos jogos, nesse caso chamadas de "tags". Esse processo envolveu ler uma segunda base de dados (ainda presente no mesmo grupo dos dados disponibilizados) que possuía as informações de metadados dos jogos. E então houve um processo de readequação, já que esta tabela em específico veio no formato json.
+
+```{r, add-tags}
+out <- lapply(readLines(here::here("data-raw/steam-data/db-3/games_metadata.json")), fromJSON)
+
+## Unindo o terceiro elemento da lista
+for(i in 1:length(out)){
+  purrr::pluck(out, i, 3)<-paste0(purrr::pluck(out, i, 3), collapse = ",")
+}
+
+## Transformando em um dataframe para unir à outra base
+df_metadata <- do.call(rbind.data.frame, out)
+
+## Adicionando coluna de tags do df_metadata, e adicionando colunas de categoria, genero e tags extra do df anterior
+df_base_3_complete <- dplyr::left_join(df_base_3, df_metadata, by = "app_id") |> 
+  dplyr::select(-description)
+```
+
+##### Removendo não jogos
+
+Após a junção a nterior, também removi as observações que se enquadravam nas categorias que definimos como não jogos.
+
+```{r, tagsNotGames}
+## Categorias consideradas não jogos
+notGames <- c("Utilities", "Design & Illustration", "Animation & Modeling", "Game Development", "Photo Editing", "Audio Production", "Video Production", "Accounting", "Movie", "Documentary", "Episodic", "Short", "Tutorial", "360 Video")
+notGames_col <- paste0(notGames, collapse = "|")
+
+## Filtrando categorias consideradas não jogos
+## mode = 2, comparação com tags
+df_games_selTags <- func_filter_not_games(df_base_3_complete, notGames_col, mode = 2)
+
+if(params$overwrite_tables == "TS"){
+  data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
+}
+```
+
+#### Finalizando limpeza e transformação
+
+E então, finalizando as filtragens, limpezas e transformações, tenho por fim a segunda base que utilizarei para as análises.

@@ -1,0 +1,13 @@
+```{r, header-mongoDB, echo = F}
+########################################################################################## #
+#'  Arquivo utilizado para envio das bases para o servidor mongoDB
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 11/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+# library(ggplot2)
+# # library(janitor)
+# source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+```

@@ -1,0 +1,255 @@
+```{r, header-price, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado em uma análise exploratória da relação preço vs tags
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 30/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+library(ggplot2)
+```
+
+Utilizarei a base criada anteriormente, com a coluna de característica dos jogos ajustada (`tags`). E farei uma tabela com as informações descritivas relacionadas ao preço, para essa análise irei excluir os jogos gratuitos, para que não influêncie tanto nas métricas.
+
+```{r, price}
+## Usado para escrever o qmd, porém não preciso utilizar ao rodar a análise completa (outro qmd já fará a leitura desse arquivo)
+df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+# ## Base 1
+# df_base_1 <- data.table::fread(here::here("data-raw/created-tables/db-games-1.csv"))
+# ## Base 3
+# df_base_3 <- data.table::fread(here::here("data-raw/created-tables/db-games-3.csv"))
+
+## Selecionando apenas colunas utilizadas
+df_payed_games <- df_all_games |> 
+  dplyr::filter(price_final > 0 & price_original > 0)
+
+## Verificando menor valor (em dólares)
+min_games <- min(df_payed_games$price_original)
+## Verificando maior valor (em dólares)
+max_games <- max(df_payed_games$price_original)
+## Verificando valor central (em dólares)
+median_games <- median(df_payed_games$price_original)
+## Verificando quartis
+quant_games <- quantile(df_payed_games$price_original, probs = c(0, 0.25, 0.5, 0.75, 1))
+
+df_med_games <- data.frame(metrica = character(),
+                           valores = character())
+
+# summary(df_payed_games$price_original)
+
+df_med_games[nrow(df_med_games)+1, ] = c("Mínimo", min_games)
+df_med_games[nrow(df_med_games)+1, ] = c("1° Quartil", round(quant_games[2], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Mediana", median_games)
+df_med_games[nrow(df_med_games)+1, ] = c("3° Quartil", round(quant_games[4], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Máximo", max_games)
+
+df_med_games |> 
+  gt::gt()
+
+## Verificando decis
+# Preço original
+dec_orig <- quantile(df_payed_games$price_original, probs = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))
+# dec_orig
+# Preço final
+dec_fin <- quantile(df_payed_games$price_final, probs = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))
+# dec_fin
+
+```
+
+Aqui já posso tirar algumas conclusões:
+
+-   As medidas de **tendência central** apontam para **faixas de preço** dos jogos pagos relativamente **baixa**, apesar de termos jogos mais caros (com o máximo sendo de \$110). Vamos analisar com mais cautela as categorias de preços dos jogos, já que será uma das bases de decisão na escolha do tipo de jogo a ser lançado.
+
+-   Também nos decis comparei a faixa de **preço do jogo lançado**, que será utilizada para as visualizações e análises, com a **faixa de preço atual**. Em geral vi uma **variação para baixo** nos decis quando comparamos o preço de lançamento e o preço atual, indicando que os **jogos tendem a cair de preço** com o tempo, o que é visto com frequência para quem acompanha os preços da Steam, **quando** os jogos começam a ficar **mais velhos**, é comum existirem **cortes de preços e promoções para** tentar **aumentar o número de vendas**.
+
+#### Visualizações das faixas de preço
+
+Vou utilizar um gráfico para ilustrar as diferentes faixas de preços dos jogos. Para isto, escolhi um boxplot que apresenta algumas informações interessantes.
+
+```{r, graph-price-all}
+ggplot(df_payed_games, aes(y = price_original)) +
+  geom_boxplot() +
+  theme_minimal() +
+  xlim(-2, 2) +
+  labs(title = "Distribuição dos preços de jogos",
+      subtitle = "Preço em dólares",
+      alt = "Gráfico de distribuição do preço dos jogos em dólares",
+      x = "",
+      y = "") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+E aqui podemos ver que ele classificou muitos jogos como outliers, em faixas superiores à \$45, portanto resolvi tirar os jogos do primeiro e último decis, de acordo com seu preço. Depois de remover os 10% inferiores e superiores:
+
+```{r, graph-price-cut}
+ggplot(df_payed_games[(df_payed_games$price_original > dec_orig[1] & df_payed_games$price_original < dec_orig[10]),], 
+       aes(y = price_original)) +
+  geom_boxplot() +
+  theme_minimal() +
+  xlim(-2, 2) +
+  labs(title = "Distribuição dos preços de jogos",
+      subtitle = "Preço em dólares",
+      alt = "Gráfico de distribuição do preço dos jogos em dólares",
+      x = "",
+      y = "") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  scale_y_continuous(breaks=seq(0, 30, 5))
+```
+
+Observei então uma distribuição com menos valores discrepantes, tendo sua **mediana** em torno dos **\$12**, **mínimo próximo de zero** e **máximo próximo de \$30**, com **1° quartil em \$5** e **3° quartil em \$15**.
+
+Investigando a hipótese da possibilidade de descartar estes jogos para a análise, inicialmente eu defendo a exclusão dos mais caros, pois costumeiramente são os jogos mais famosos e conhecidos, que já tem seu público definido e podem se dar ao luxo de cobrar mais caro. Já os jogos mais baratos, imagino que sejam jogos menores e que não se encaixam na nossa proposta de um jogo que fosse lucrativo, muitas vezes também são jogos mais antigos que foram tendo cortes de preços para continuarem vendendo. De qualquer forma, investigaremos nos dados ambas as hipóteses.
+
+##### Investigando os 10% mais caros
+
+```{r, 10_pricier}
+# browser()
+df_all_games_pricier <- df_payed_games |> 
+  dplyr::filter(price_original >= dec_orig[10]) |>
+  dplyr::select(app_id, title, date_release, rating, positive_ratio, user_reviews, price_original, price_final, tags_all)
+```
+
+Verifiquei muitos jogos considerados "AAA", jogos de grandes editoras e publicadoras, como The Witcher 3, Cyberpunk 2077, Red Dead Redemption 2, e alguns um pouco menores mas que fizeram bastante sucesso como Rust, DayZ, Deep Rock Galactica. Com preços variando de \$29.99 até \$109.99. Citando como exemplo de jogos mais caro em seu preço original o TEKKEN 7, lançado em 2017 e com preço de lançamento de \$109.99, interessante de se notar que o preço atual (em maio/2023) do jogo é de \$16.49.
+
+##### Investigando os 10% mais baratos
+
+```{r, 10_cheaper}
+df_all_games_cheaper <- df_all_games |> 
+  dplyr::filter(price_original <= dec_orig[2]) |>
+  dplyr::select(app_id, title, date_release, rating, positive_ratio, user_reviews, price_original, price_final, tags_all)
+
+```
+
+Já na análise dos preços mais baratos, verifiquei que os jogos que possuem mais reviews na categoria dos mais baratos, são os jogos gratuitos, porém são jogos que possuem uma estratégia diferente, e que tem crescido bastante em popularidade, os jogos gratuitos com microtransações. Jogos que costumam fazer receita através da venda de itens cosméticos dentro do próprio jogo, ou algum sistema de assinatura que garanta benefícios (cosméticos ou facilitação para o jogador).
+
+##### Evolução de preços
+
+Outra coisa interessante que notei, é que os **jogos mais antigos eram lançados por preços mais baixos**, parece ter havido um **aumento de preço médio dos jogos**, o que pode explicar em partes a quantidade de jogos nas faixas mais baratas. Para isso, vamos tentar observar a variação de preço ao longo dos anos, com o intuito de entender as faixas de preços atuais e definir a melhor faixa de preço para o lançamento de um jogo.
+
+```{r, price-year}
+## Excluindo jogos gratuitos
+df_all_games_notFree <- df_all_games |> 
+  dplyr::filter(price_original > 0 & price_final > 0)
+
+df_all_games_year <- df_all_games_notFree |> 
+  dplyr::mutate(year_release = lubridate::year(date_release)) |>
+  dplyr::filter(year_release > 2006) |> 
+  dplyr::group_by(year_release) |> 
+  dplyr::summarise(mean_price = mean(price_original), median_price = median(price_original), 
+                   .groups = "drop")
+
+ggplot(df_all_games_year, aes(x = year_release, y = median_price)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = "Evolução da mediana dos preços ao longo dos anos",
+          subtitle = "Preços",
+          x = "",
+          y = "") +
+  scale_y_continuous(breaks = c(7.99, 9.99, 12.99, 14.99)) +
+  scale_x_continuous(breaks = c(seq(2007, 2023, 2))) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(hjust = -0.08))
+
+```
+
+Apesar de já ter verificado um **aumento na mediana e na média de preços**, por ter acompanhado esse mercado por alguns anos tive a impressão de que o resultado não refletia exatamente os aumentos observados por mim, então decidi me debruçar mais sobre alguns exemplos de jogos considerados "triple A".
+
+Seguindo alguns exemplos de **jogos que são grandes franquias e são lançados quase que anualmente**, pude observar bem esta tendência de aumento no preço. Vamos usar como exemplo os jogos Assassin's Creed, Battlefield, Call Of Duty, Far Cry, Final Fantasy, NieR que são franquias já muito conhecidas e que estiveram em alguns períodos no catálogo da Steam (alguns dos jogos não estão presentes de forma integral por figurarem apenas em lojas próprias das empresas). Removi os Remasters nos jogos que possuíam, que são jogos que são relançados geralmente com pequenas alterações gráficas e acabam tendo preço mais baixo, por ser um jogo mais antigo e no caso do Final Fantasy, como existem muitos jogos menores sendo relançados, mantive apenas o preço mais alto do ano. As franquias Battlefield e Call Of Duty também tiveram que ser corrigida em seus anos de lançamento, pois muitos jogos foram adicionados com sua data de lançamento incorreta.
+
+```{r, price-year-franchises}
+## Selecionando jogos
+df_ac <- df_all_games |> 
+  dplyr::filter(stringr::str_detect(title, "Assassin's Creed")) |> 
+  dplyr::filter(!stringr::str_detect(title, "Remastered|Pack"),
+                categories != "") |>
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::mutate(title = "Assassin's Creed") |>
+  dplyr::select(title, year_release, price_original)
+
+df_bf <- df_all_games |> 
+  dplyr::filter(stringr::str_detect(title, "Battlefield")) |> 
+  dplyr::filter(!stringr::str_detect(title, "WWII|War Dust|Pack|Eternal"),
+                categories != "") |> 
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::select(title, year_release, price_original)
+
+df_bf$year_release[df_bf$title == 'Battlefield 3™'] <- 2011
+df_bf$year_release[df_bf$title == 'Battlefield 4™'] <- 2013
+df_bf$year_release[df_bf$title == 'Battlefield™ Hardline'] <- 2015
+df_bf$year_release[df_bf$title == 'Battlefield™ 1'] <- 2016
+df_bf$year_release[df_bf$title == 'Battlefield™ V'] <- 2018
+
+df_bf <- df_bf |> 
+  dplyr::mutate(title = "Battlefield")
+
+df_cod <- df_all_games |> 
+  dplyr::filter(stringr::str_detect(title, "Call of Duty")) |> 
+  dplyr::filter(!stringr::str_detect(title, "Pack|Commandos|Remastered"),
+                categories != "",
+                price_original > 0) |>
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::select(title, year_release, price_original)
+
+
+df_cod$year_release[df_cod$title == 'Call of Duty®'] <- 2003
+df_cod$year_release[df_cod$title == 'Call of Duty: United Offensive'] <- 2004
+df_cod$year_release[df_cod$title == 'Call of Duty® 2'] <- 2005
+df_cod$year_release[df_cod$title == 'Call of Duty®: Ghosts'] <- 2013
+df_cod$year_release[df_cod$title == 'Call of Duty®: Modern Warfare®'] <- 2019
+df_cod$year_release[df_cod$title == 'Call of Duty®: Black Ops Cold War'] <- 2020
+
+df_cod <- df_cod |> 
+  dplyr::mutate(title = "Call Of Duty")
+
+df_fc <- df_all_games |> 
+  dplyr::filter(stringr::str_detect(title, "Far Cry")) |> 
+  dplyr::filter(!stringr::str_detect(title, "Pack"),
+                categories != "") |>
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::mutate(title = "Far Cry") |>
+  dplyr::select(title, year_release, price_original)
+
+df_ff <- df_all_games |> 
+  dplyr::filter(stringr::str_detect(title, "FINAL FANTASY")) |> 
+  dplyr::filter(!stringr::str_detect(title, "Pack|REMASTERED|Remaster|DISSIDIA"),
+                categories != "") |>
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::mutate(title = "Final Fantasy") |>
+  dplyr::select(title, year_release, price_original) |> 
+  dplyr::arrange(desc(price_original)) |> 
+  dplyr::distinct(year_release, .keep_all = T)
+
+df_nr <- df_all_games |> 
+dplyr::filter(stringr::str_detect(title, "NieR")) |> 
+  dplyr::filter(!stringr::str_detect(title, "Pack"),
+                categories != "") |>
+  dplyr::mutate(year_release = lubridate::year(date_release)) |> 
+  dplyr::mutate(title = "NieR") |>
+  dplyr::select(title, year_release, price_original)
+
+df_games_sel <- rbind(df_ac, df_bf, df_cod, df_fc, df_ff, df_nr)
+
+ggplot(df_games_sel, aes(x = year_release, y = price_original, color = title)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = "Evolução dos preços ao longo dos anos",
+          subtitle = "Preços",
+          x = "",
+          y = "") +
+  facet_wrap(~title) +
+  scale_y_continuous(breaks = c(19.99, 39.99, 59.99, 69.99)) +
+  scale_x_continuous(breaks = c(seq(2010, 2022, 6))) +
+  scale_color_manual(values = rep(c("lightblue"), 6)) +
+  theme(panel.grid.major = element_blank(),
+        # panel.grid.minor = element_blank(),
+        plot.subtitle = element_text(hjust = -0.09)) +
+  guides(color = "none")
+  
+```
+
+**Confirmei** então **essa tendência de aumento**, mesmo que em alguns casos não seja uma tendência clara, em geral **os preços dos jogos** **considerados "AAA"** **subiram** desde os \$19.99 nos anos de 2010 até os \$59.99 e até \$69.99 em alguns casos até o ano de 2022.

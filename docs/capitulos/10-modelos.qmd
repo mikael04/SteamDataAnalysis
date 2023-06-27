@@ -1,0 +1,237 @@
+```{r, trainning-steam-data}
+
+# df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+
+library(tidymodels)      # for the recipes package, along with the rest of tidymodels
+
+# Helper packages
+library(nycflights13)    # for flight data
+library(skimr)           # for variable summaries
+
+df_games_sample <- df_all_games |> 
+  # dplyr::slice_sample(n = 1000) |> 
+  dplyr::select(app_id, date_release, win, mac, linux, positive_ratio, price_original, steam_deck, tags_all)
+
+df_games_sample <- df_all_games |> 
+  dplyr::mutate(ratio = case_when(positive_ratio > 95 ~ "Excellent",
+                                  positive_ratio > 85 ~ "Very Good",
+                                  positive_ratio > 70 ~ "Not worth it",
+                                  positive_ratio > 50 ~ "Ok",
+                                  positive_ratio > 30 ~ "Bad",
+                                  positive_ratio > 0 ~ "Very Bad",
+                                  .default = "NoClass")) |>
+# dplyr::mutate(ratio = case_when(positive_ratio > 70 ~ "Worth",
+#                                   .default = "Not worth it")) |> 
+  dplyr::select(app_id, title, date_release, positive_ratio, ratio, user_reviews, price_original, tags_all)
+
+df_games_exc <- df_games_sample |> 
+  dplyr::filter(ratio == "Excellent")
+
+df_games_rev <- df_games_sample |> 
+  dplyr::filter(user_reviews > 100)
+
+n_top <- 100
+
+# separate the categories into separate rows
+df_games_sample_split <- tidyr::separate_rows(df_games_sample, tags_all, sep = ",") |> 
+  dplyr::mutate(tags_all = ifelse(tags_all == "", "unknown", tags_all)) |> 
+  dplyr::filter(tags_all != "unknown")
+
+df_unknown <- tidyr::separate_rows(df_games_sample, tags_all, sep = ",") |> 
+  dplyr::filter(tags_all == "")
+
+df_games_sample_split <- func_filter_top(df_games_sample_split, n_top, debug = T)
+
+# convert category column into dummy variables
+dummies <- tidyr::pivot_wider(df_games_sample_split, id_cols = app_id, names_from = tags_all, values_from = tags_all, values_fill = "0") |> 
+  dplyr::mutate(dplyr::across(2:(n_top+1), ~ dplyr::if_else(.x == "0", .x, "1")))
+
+## Agrupando colunas dummies aos dados
+df_model <- left_join(df_games_sample, dummies, by = "app_id") |> 
+  dplyr::select(-tags_all, -title, -positive_ratio, -user_reviews, -price_original)
+
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(222)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(df_model, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+steam_rec <- 
+  recipe(ratio ~ ., data = train_data) %>% 
+  update_role(app_id, new_role = "ID") %>% 
+  step_date(date_release, features = c("dow", "month")) %>%               
+  step_holiday(date_release, 
+               holidays = timeDate::listHolidays("US"), 
+               keep_original_cols = FALSE)
+
+summary(steam_rec)
+
+lr_mod <- 
+  logistic_reg() |> 
+  set_engine("glm") |> 
+  set_mode("classification")
+
+steam_wflow <- 
+  workflow() %>% 
+  add_model(lr_mod) %>% 
+  add_recipe(steam_rec)
+
+steam_fit <- 
+  steam_wflow %>% 
+  fit(data = train_data)
+
+steam_fit %>% 
+  extract_fit_parsnip() %>% 
+  tidy() |> 
+  DT::datatable()
+
+predict(steam_fit, test_data)
+
+steam_aug <- 
+  augment(steam_fit, test_data)
+
+# The data look like: 
+steam_aug |> 
+  select(ratio, app_id, .pred_class, .pred_Bad, .pred_Excelent)
+
+# flights_aug %>% 
+#   roc_curve(truth = ratio, .pred_late) %>% 
+#   autoplot()
+```
+
+```{r, categories-performance}
+library(tidymodels)      # for the recipes package, along with the rest of tidymodels
+library(reticulate)
+use_python("/home/userkl/.local/share/r-miniconda/envs/r-reticulate/bin/python")
+library(keras)
+library(tensorflow)
+# tensorflow::install_tensorflow()
+# tensorflow::tf_config()
+
+# use_condaenv("r-tensorflow")
+
+df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+
+df_reg_lin <- df_all_games |>
+  dplyr::select(app_id, positive_ratio, tags_all)
+
+n_top <- 400
+
+# separate the categories into separate rows
+df_reg_lin_split <- tidyr::separate_rows(df_reg_lin, tags_all, sep = ",") |> 
+  dplyr::mutate(tags_all = ifelse(tags_all == "", "unknown", tags_all)) |> 
+  dplyr::filter(tags_all != "unknown")
+
+df_unknown <- tidyr::separate_rows(df_reg_lin_split, tags_all, sep = ",") |> 
+  dplyr::filter(tags_all == "")
+
+df_reg_lin_split <- func_filter_top(df_reg_lin_split, n_top, debug = T)
+
+# convert category column into dummy variables
+dummies <- tidyr::pivot_wider(df_reg_lin_split, id_cols = app_id, names_from = tags_all, values_from = tags_all, values_fill = "0") |> 
+  dplyr::mutate(dplyr::across(2:(n_top+1), ~ dplyr::if_else(.x == "0", .x, "1")))
+
+dummies_int <- data.frame(lapply(dummies, as.numeric))
+
+## Agrupando colunas dummies aos dados
+df_model <- left_join(df_reg_lin, dummies_int, by = "app_id") |> 
+  dplyr::select(-tags_all)
+
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(222)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(df_model, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+steam_rec <- 
+  recipe(positive_ratio ~ ., data = train_data) |>  
+  update_role(app_id, new_role = "ID") |> 
+  step_scale(all_predictors()) |> 
+  step_center(all_predictors())
+
+summary(steam_rec)
+
+## Modo 1 (formato tidy)
+
+linear_reg() %>% 
+  set_engine("keras")
+
+lm_mod <- linear_reg()
+
+lm_fit <-
+  lm_mod |> 
+  fit(positive_ratio ~ . -app_id, data = df_model)
+
+## Modo 2 com workflow
+
+steam_lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(steam_rec)
+
+steam_lm_fit <- 
+  steam_wflow %>% 
+  fit(data = train_data)
+
+folds <- vfold_cv(train_data, v = 10)
+
+steam_lm_fit_rs <- 
+  steam_lm_wflow %>% 
+  fit_resamples(folds)
+
+collect_metrics(steam_lm_fit_rs)
+
+lm_training_pred <-                 
+  predict(lm_fit, train_data) |> 
+  bind_cols(train_data) |> 
+  metrics(truth = positive_ratio, estimate = .pred)
+
+lm_training_pred <- 
+  predict(lm_fit, train_data) |> 
+  bind_cols(predict(lm_fit, train_data)) %>% 
+  # Add the true outcome data back in
+  bind_cols(train_data %>% 
+              select(positive_ratio))
+
+lm_training_pred %>%                # training set predictions
+  metrics(truth = positive_ratio, .pred...1)
+
+# lm_fit <-
+#   lm_mod |> 
+#   fit(steam_rec |> prep() |> bake(new_data = NULL), train_data)
+
+# ## Modo 3 (com a loss function)
+# lm_model <- linear_reg() |>
+#   set_engine("keras")
+# 
+# lm_fit <- lm_model |> 
+#   fit(positive_ratio ~ . -app_id, data = df_model)
+
+## Ver propriedades
+lm_fit
+
+
+## Colocar em formato tidy para dataframe
+df_lm_fit <- tidy(lm_fit) |> 
+  dplyr::arrange(p.value)
+
+lm_perf <- predict(lm_fit, train_data) %>%
+  bind_cols(train_data) %>%
+  metrics(truth = positive_ratio, estimate = .pred)
+
+par(mfrow=c(2,2)) # plot all 4 plots in one
+
+plot(lm_fit$fit, 
+     pch = 16,    # optional parameters to make points blue
+     col = '#006EA1')
+
+glance(lm_fit)
+```

@@ -1,0 +1,144 @@
+---
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r, header-reviews, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado em uma análise exploratória da relação preço vs tags
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 30/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+library(ggplot2)
+library(dplyr)
+source(here::here("R/fct-auxiliares/fct_add_price_categ.R"))
+```
+
+#### Mais avaliações positivas
+
+Primeiramente vou analisar os jogos que tem mais avaliações positivas, decidi utilizar os 100 jogos mais bem avaliados da base para tentar trazer algum insight.
+Além disso, faremos um filtro de ano, para que tenhamos jogos mais atuais.
+
+Para isso, defini alguns filtros para os jogos:
+
+1.  Ter sido lançados de 2019 até os dias de hoje, para que tenhamos um mercado observado mais próximo dos dias atuais.
+
+2.  Possuírem pelo menos 50000 avaliações.
+
+```{r, more-reviews}
+## Usado para escrever o qmd, porém não preciso utilizar ao rodar a análise completa (outro qmd já fará a leitura desse arquivo)
+df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+
+df_more_reviewed <- func_add_price_categ(df_all_games, F) |> 
+  dplyr::filter(user_reviews > 50000 & date_release > '2019-01-01') |>
+  dplyr::arrange(desc(user_reviews)) |> 
+  dplyr::slice_head(n = 100)
+
+## Menor valor de preço
+min_best <- min(df_more_reviewed$price_final, df_more_reviewed$price_original)
+## Maior valor de preço
+max_best <- max(df_more_reviewed$price_final, df_more_reviewed$price_original)
+## Mediana de valores de preço
+median_best <- median(df_more_reviewed$price_original)
+
+## Verificando quartis
+quant_best <- quantile(df_more_reviewed$price_original, probs = c(0, 0.25, 0.5, 0.75, 1))
+
+
+df_med_games <- data.frame(metrica = character(),
+                           valores = character())
+
+df_med_games[nrow(df_med_games)+1, ] = c("Mínimo", min_best)
+df_med_games[nrow(df_med_games)+1, ] = c("1° Quartil", round(quant_best[2], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Mediana", median_best)
+df_med_games[nrow(df_med_games)+1, ] = c("3° Quartil", round(quant_best[4], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Máximo", max_best)
+
+```
+
+```{r, more-reviews-graph}
+df_more_reviewed$price_categ <- as.factor(df_more_reviewed$price_categ)
+
+df_more_reviewed$price_categ <- factor(df_more_reviewed$price_categ,
+                                       levels = c("Gratuito", "Muito Barato", "Barato",
+                                                  "Medio", "Caro", "Muito Caro"))
+
+ggplot(df_more_reviewed, aes(x = price_categ, )) +
+  geom_bar(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Contagem de jogos por categoria de preço",
+       x = "",
+       y = "")
+
+```
+
+O primeiro gráfico não trouxe nenhuma conclusão, existem jogos baratos que foram lançados e fizeram sucesso, como Phasmophobia, Valheim e Raft, existem jogos que são gratuitos e lucram através de itens cosméticos como o Apex Legends, Lost Ark e Destiny 2 (que foi pago e se tornou gratuito), e existem jogos caros que foram lançados e fizeram sucesso, como CyberPunk 2077, Elden Ring, Red Dead Redemption 2, Forza e Sekiro.
+Em resumo, os **jogos com maior número de avaliações positivas não** **parecem ter um padrão relacionado à faixa de preço**.
+
+#### Mais avaliações positivas
+
+Decidi então observar os jogos que possuiam mais avaliações positivas.
+E para isso tambem definimos filtros similares.
+
+1 - Também terão que ser lançados recentemente, de 2019 até os dias de hoje.
+
+2 - Possuírem pelo menos 10000 avaliações.
+
+```{r, positive-ratio}
+df_best_ratio <- df_all_games |> 
+  dplyr::filter(user_reviews > 10000 & date_release > '2019-01-01') |>
+  dplyr::arrange(desc(positive_ratio)) |>
+  dplyr::slice_head(n = 100)
+
+## Menor valor de preço
+min_best <- min(df_best_ratio$price_final, df_best_ratio$price_original)
+## Maior valor de preço
+max_best <- max(df_best_ratio$price_final, df_best_ratio$price_original)
+## Mediana de valores de preço
+median_best <- median(df_best_ratio$price_original)
+
+## Verificando quartis
+quant_best <- quantile(df_best_ratio$price_original, probs = c(0, 0.25, 0.5, 0.75, 1))
+
+
+df_med_games <- data.frame(metrica = character(),
+                           valores = character())
+
+# summary(df_payed_games$price_original)
+
+df_med_games[nrow(df_med_games)+1, ] = c("Mínimo", min_best)
+df_med_games[nrow(df_med_games)+1, ] = c("1° Quartil", round(quant_best[2], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Mediana", median_best)
+df_med_games[nrow(df_med_games)+1, ] = c("3° Quartil", round(quant_best[4], 2))
+df_med_games[nrow(df_med_games)+1, ] = c("Máximo", max_best)
+
+```
+
+```{r, positive-ratio-graph}
+df_best_ratio <- func_add_price_categ(df_best_ratio, F)
+
+df_best_ratio$price_categ <- as.factor(df_best_ratio$price_categ)
+
+df_best_ratio$price_categ <- factor(df_best_ratio$price_categ,
+                                       levels = c("Gratuito", "Muito Barato", "Barato",
+                                                  "Medio", "Caro", "Muito Caro"))
+
+ggplot(df_best_ratio, aes(x = price_categ)) +
+  geom_bar(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Contagem de jogos por categoria de preço",
+       x = "",
+       y = "")
+
+```
+
+Dessa forma, agora ranqueando pelos jogos mais bem avaliados, observei uma **concentração maior** nas **faixas de preço mais baixas**, dos **muito baratos até os médios**, ainda com alguma representação de jogos caros, mas sem jogos muito caros como era visto anteriormente.
+Comparando com o gráfico anterior, vemos **uma diminuição grande** de **jogos gratuitos e jogos caros**, praticamente metade em ambos os casos, e um **crescimento grande dos jogos muito baratos e baratos**, os **jogos médios se mantiveram** mais ou menos com a mesma proporção, e os jogos muito caros não apareceram no segundo gráfico.
+
+O que **pode indicar** **uma faixa de preço** interessante para o lançamento de um jogo seja tanto esse aumento de **jogos muito baratos e baratos**, quanto essa constância dos jogos de **preço médio**.
+Porém, vamos tentar analisar outros aspectos usando análises mais complexas.

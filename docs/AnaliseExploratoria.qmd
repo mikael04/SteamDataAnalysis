@@ -1,0 +1,187 @@
+---
+title: "Analise Exploratoria"
+author: "Mikael M Coletto"
+date: "01/05/2023"
+toc: true
+execute:
+  warning: false
+cache: FALSE
+lang: pt
+theme: cerulean
+reference-location: margin
+code-fold: true
+code-tools: 
+    source: https://github.com/mikael04/steam-dashboard.git
+params:
+  run_all_code: "F"
+  overwrite_tables: "F"
+---
+
+```{r setup, include=FALSE}
+## Definindo pasta padrão
+knitr::opts_knit$set(root.dir = '/mnt/Netac-Dados/Projetos/R/steam-dashboard',
+                     cache.lazy = FALSE)
+path_quarto <- "../../"
+## Definindo
+source(here::here("R/fct-auxiliares/fct_order_strings.R"))
+source(here::here("R/fct-auxiliares/fct_filter_top.R"))
+source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+## Librarys
+library(ggplot2)
+library(dplyr)
+
+## Switch para reescrever tabelas iniciais
+# switch_overwrite_tables <- T
+
+print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
+```
+
+# Análise dos dados da Steam
+
+## Introdução
+
+A ideia desta análise é ilustrar os conhecimentos adquiridos em R, começando com uma análise exploratória dos dados e tentando trazer alguns insights relacionados à jogos de sucesso no mercado. Para isso vou passar pelas etapas de elaboração do objetivo, trabalho no tratamento e limpeza dos dados, fazer análises de variáveis de interesse individualmente e depois cruzando algumas delas para tentar traçar algumas conclusões, que, por fim, podem sugerir alguns caminhos para empresas que pretendem lançar seus jogos terem sucesso na Steam.
+
+## O objetivo
+
+Somos um estúdio de jogos e queremos analisar:
+
+1.  Qual gênero/categoria de jogo tem mais sucesso na steam, definindo sucesso como melhores avaliações;
+
+2.  Também queremos analisar qual faixa de preço é mais interessante para o lançamento desse novo jogo, como a faixa de preço se relaciona com o número de vendas e com a categoria.
+
+## Análise exploratória das bases de dados
+
+Inicialmente irei fazer uma análise exploratória de algumas bases de dados e suas variáveis que podem ser interessantes para determinar sucesso de um jogo, a faixa de preço, a quantidade de vendas e relacionar essas questões aos gêneros e categorias. Foram feitas análises de três bases de dados, a primeira mais completa, e as duas seguintes mais focadas em reviews de usuários. São bases de dadas extraídas do Kaggle que serão utilizadas para o estudo.
+
+
+### Base de dados - 1
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: "docs/capitulos/1-analise-base-1.qmd"
+```
+
+### Base de dados - 2
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: "docs/capitulos/2-analise-base-2.qmd"
+```
+
+### Base de dados - 3
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: "docs/capitulos/3-analise-base-3.qmd"
+```
+
+### Diferenças entre base 1 e 3
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: "docs/capitulos/4-dif-entre-bases.qmd"
+```
+
+## Unindo as bases
+
+```{r}
+#| eval: !expr params$run_all_code=="T"
+#| child: docs/capitulos/5-unindo-bases.qmd
+```
+
+## Analisando dados
+
+Agora que já uni as duas bases, e tenho uma quantidade mais razoável de jogos a serem analisados, precisarei definir qual será a forma de avaliar os estilos/gêneros/categorias dos jogos, por ser uma coluna presente em ambas as bases, a variável `tags` é uma ótima candidata, porém ela apresenta um número de possibilidades bastante grande e distinta, o que poderia ser prejudicial à análise. Já as outras variáveis `categories` e `genres` que são mais específicas, não estão presentes em boa parte dos dados. A análise será feita inicialmente nas três para posterior decisão de qual ou quais usar.
+
+### Categorias
+
+```{r, categs-count}
+if(params$run_all_code == "F"){
+  df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+}
+rows_categ <- df_all_games |> 
+  dplyr::filter(!(is.na(categories)) & categories != "") |> 
+  nrow()
+```
+
+Ou seja, na base de dados aproximadamente `r paste0(round(rows_categ*100/nrow(df_all_games), 0), "%")` das linhas não tem informação de categorias, a variável poderia ser utilizada, porém com algumas ressalvas.
+
+### Gêneros
+
+```{r, genres-count}
+rows_genres <- df_all_games |> 
+  dplyr::filter(!(is.na(genres)) & genres != "") |> 
+  nrow()
+```
+
+Novamente, cerca de `r paste0(round(rows_genres*100/nrow(df_all_games), 0), "%")` da base não possui informações de gênero.
+
+### Categorias e Gênero
+
+```{r, categs-genres-count}
+rows_gen_cat <- df_all_games |> 
+  dplyr::filter(!(is.na(categories)) & categories != "") |> 
+  dplyr::filter(!(is.na(genres)) & genres != "") |> 
+  nrow()
+```
+
+E, para efeito de comparação, podemos ver que os valores sem categorias e gênero tem o mesmo percentual (`r paste0(round(rows_gen_cat*100/nrow(df_all_games), 0), "%")`), o que faz bastante sentido já essas informações faltantes vem da primeira base que não possuía essas colunas, os valores que temos, os 40%, são dos jogos adicionados pela base 1.
+
+### Tags
+
+```{r, tags-count}
+if(params$run_all_code == "F"){
+  rows_tags <- df_all_games |> 
+    dplyr::filter(!(is.na(tags_all)) & tags_all != "") |> 
+    nrow()
+}else{
+  rows_tags <- df_all_games |> 
+    dplyr::filter(!(is.na(tags)) & tags != "" ||
+                  (is.na(tags_extra)) & tags_extra != "") |> 
+    nrow()
+}
+```
+
+Já no caso das tags, `r paste0(round(rows_tags*100/nrow(df_all_games), 0), "%")` das observações possuem alguma informação nas variáveis `tags` ou `tags_extra` (o que também faz sentido, já que unimos duas bases diferentes e uma delas possuia a coluna tags e a outra tags_extra).
+
+Portanto, farei uma análise mais aprofundada desta variável para gerar uma única coluna que possa ser analisada.
+
+```{r}
+#| child: "docs/capitulos/6-tags.qmd"
+```
+
+### Investigando preços
+
+Vou agora me debruçar sobre as faixas de preços e em seguida farei um cruzamento dos dados de preços e tags.
+
+```{r}
+#| child: "docs/capitulos/7-price.qmd"
+```
+
+### Investigando jogos bem avaliados
+
+```{r}
+#| child: "docs/capitulos/8-reviews.qmd"
+```
+
+## Analise de variáveis combinadas
+
+### Investigando variações das tags em categorias de preços
+
+```{r}
+#| child: "docs/capitulos/9-price-tags.qmd"
+```
+
+## Conclusão
+
+Ao finalizar essa análise descritiva dos dados de jogos da Steam, pude chegar à algumas conclusões, principalmente após as análises referentes a preços e categorias.
+
+A primeira delas é que **se existe orçamento** capaz de suportar o **desenvolvimento de jogos multiplayers**, a recomendação é que o faça, já que **são os jogos com maior número de jogadores e com mais avaliações**, a interação entre jogadores, quando bem feita, é algo que costuma prender os jogadores e mantê-los jogando por longos períodos de tempo. Nesse caso é preciso estudar o mercado, buscando jogos similares, e **identificar qual modelo de negócio é mais adequado**. Para um **novo estúdio ou nova franquia** os jogos que tem feito mais sucesso são os **jogos gratuitos** com formas de **transações dentro do jogo**, seja algum tipo de facilitação dentro do jogo ou itens cosméticos. A **vantagem dos jogos gratuitos** é que atingem um **grande público**, o que é vital para o desenvolvimento de uma comunidade de jogadores, e **dentro desta comunidade** **uma parcela** **poderá** **gastar dentro do jogo** . Lembrando que, em geral, são jogos que **vendem cosméticos ou acelerações de desempenho**, portanto uma questão **muito importante** é trabalhar de forma que **torne os itens** cosméticos e as acelerações de desempenho itens **desejáveis**, **porém não desbalanceados** a ponto de incomodar os jogadores que não gastam no jogo.
+
+Já caso o **orçamento** seja **limitado**, jogos com **preços baixos** e que **foquem** na **experiência Singleplayer** se saem melhor, são jogos que podem ter um **orçamento menor ou estúdos independentes**. Os jogos Indie, que surgem por estúdios de desenvolvimento de jogos independentes costumam ter um gasto menor com desenvolvimento, frequentemente com equipes reduzidas e **tentam trazer algum diferencial**, podendo ser a **história** do jogo, o **design** **ou** até mesmo alguma **mecânica de jogabilidade**. Jogos como o FTL, Minecraft, Super Meat Boy e Torchlight são exemplos de jogos que começaram como indie e fizeram muito sucesso no mercado de jogos. Inclusive o Minecraft e Torchlight são jogos que perduram até hoje, o primeiro tendo sido comprado por uma gigante no mercado de tecnologias, a Microsoft, e o segundo com o crescimento do estúdio e podendo ser considerado já um estúdio de médio porte.
+
+Ainda, **caso o estúdio possa investir**, porém **não quer se preocupar** com tanto **suporte à longo prazo** de servidores, na questão de hackers ou mesmo tenha foco em modos competivivos, existem **jogos Singleplayers** que tem se destacado no mercado, como o recente Hogwarts Legacy que teve ótima crítica e tem sido bastante falado, e os jogos The Witcher 3 ou Cyberpunk que estão na lista dos 20 jogos mais bem avaliados, contudo, fica a ressalva de que esses jogos **não são jogos comuns**, The Witcher já é o terceiro jogo da série e foi crescendo em público com o tempo, e Cyberpunk é um jogo da mesma desenvolvedora e conseguiu construir uma campanha de marketing para se tornar um jogo muito aguardado. E o Hogwarts Legacy é um jogo que se utiliza de uma franquia muito famosa no mundo do cinema para atrair o público.
+
+```{r, child="docs/capitulos/10-modelos.qmd", eval=F}
+```

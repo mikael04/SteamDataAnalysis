@@ -1,0 +1,52 @@
+```{r, header-base-2, echo=FALSE, message=FALSE}
+########################################################################################## #
+#'  Parte do arquivo de análise exploratória
+#'  Arquivo focado na análise da segunda base
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 12/03/23
+########################################################################################## #
+```
+
+##### Fonte
+
+Esta base de dados se encontra no Kaggle, através deste link:
+
+<https://www.kaggle.com/datasets/souyama/steam-dataset>
+
+##### Visão inicial
+
+Como os dados de avaliações na primeira base eram escassos e eu já havia encontrado outras bases de dados nas buscas que fiz, decidi analisar outras bases e verificar se alguma outra teria informações mais úteis com propósito de verificar dados de avaliação dos jogos.
+
+```{r, db-4}
+df_base_2 <- data.table::fread(here::here("data-raw/steam-data/db-4/dataset.csv")) |> 
+  dplyr::select(-review_text)
+
+name <- unique(df_base_2$app_name)
+
+unique_val_review <- unique(df_base_2$review_score)
+
+df_base_2$positive <- dplyr::if_else(df_base_2$review_score == 1, 1, 0)
+df_base_2$negative <- dplyr::if_else(df_base_2$review_score == -1, 1, 0)
+
+df_base_2_group <- df_base_2 |> 
+  dplyr::group_by(app_id) |> 
+  dplyr::summarise(count_positive = sum(positive),
+                   count_negative = sum(negative)) |> 
+  dplyr::distinct(app_id, .keep_all = T) |> 
+  dplyr::ungroup() |> 
+  dplyr::inner_join(df_base_2[!duplicated(df_base_2[, c("app_id", "app_name")]), c("app_id", "app_name")])
+  
+df_base_2_head <- df_base_2 |> 
+  dplyr::slice_sample(prop = 0.1)
+
+db_unique <- df_base_2[!duplicated(df_base_2[, c("app_id", "app_name")]), c("app_id", "app_name")]
+
+# df_base_2 <- data.table::fread("data-raw/steam-data/db-5/GamesAndRecommendation/recommendations.csv")
+```
+
+Porém, investigando a base, notei que ela era um pouco antiga, por não possuir títulos como o "Counter-Strike: Global Offensive", os jogos mais novos da série "Battlefield", entre outros, o que seria um problema para traçarmos conclusões no mercado atual.
+
+#### Excluíndo a base
+
+E então, após contatar os problemas citados, decidi não utilizar esta base para a análise.
