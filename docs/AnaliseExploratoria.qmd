@@ -11,17 +11,18 @@ theme: cerulean
 reference-location: margin
 code-fold: true
 code-tools: 
-    source: https://github.com/mikael04/steam-dashboard.git
+    source: https://github.com/mikael04/SteamDashAnalysis.git
 params:
-  run_all_code: "F"
-  overwrite_tables: "F"
+  run_all_code: "T"
+  overwrite_tables: "T"
+output-file: index.html
 ---
 
 ```{r setup, include=FALSE}
-## Definindo pasta padrão
-knitr::opts_knit$set(root.dir = '/mnt/Netac-Dados/Projetos/R/steam-dashboard',
-                     cache.lazy = FALSE)
-path_quarto <- "../../"
+# ## Definindo pasta padrão
+# knitr::opts_knit$set(root.dir = '/mnt/Netac-Dados/Projetos/R/SteamDashAnalysis',
+#                      cache.lazy = FALSE)
+# path_quarto <- "../../"
 ## Definindo
 source(here::here("R/fct-auxiliares/fct_order_strings.R"))
 source(here::here("R/fct-auxiliares/fct_filter_top.R"))
@@ -59,35 +60,35 @@ Inicialmente irei fazer uma análise exploratória de algumas bases de dados e s
 
 ```{r}
 #| eval: !expr params$run_all_code=="T"
-#| child: "docs/capitulos/1-analise-base-1.qmd"
+#| child: "capitulos/1-analise-base-1.qmd"
 ```
 
 ### Base de dados - 2
 
 ```{r}
 #| eval: !expr params$run_all_code=="T"
-#| child: "docs/capitulos/2-analise-base-2.qmd"
+#| child: "capitulos/2-analise-base-2.qmd"
 ```
 
 ### Base de dados - 3
 
 ```{r}
 #| eval: !expr params$run_all_code=="T"
-#| child: "docs/capitulos/3-analise-base-3.qmd"
+#| child: "capitulos/3-analise-base-3.qmd"
 ```
 
 ### Diferenças entre base 1 e 3
 
 ```{r}
 #| eval: !expr params$run_all_code=="T"
-#| child: "docs/capitulos/4-dif-entre-bases.qmd"
+#| child: "capitulos/4-dif-entre-bases.qmd"
 ```
 
 ## Unindo as bases
 
 ```{r}
 #| eval: !expr params$run_all_code=="T"
-#| child: docs/capitulos/5-unindo-bases.qmd
+#| child: capitulos/5-unindo-bases.qmd
 ```
 
 ## Analisando dados
@@ -148,7 +149,7 @@ Já no caso das tags, `r paste0(round(rows_tags*100/nrow(df_all_games), 0), "%")
 Portanto, farei uma análise mais aprofundada desta variável para gerar uma única coluna que possa ser analisada.
 
 ```{r}
-#| child: "docs/capitulos/6-tags.qmd"
+#| child: "capitulos/6-tags.qmd"
 ```
 
 ### Investigando preços
@@ -156,13 +157,13 @@ Portanto, farei uma análise mais aprofundada desta variável para gerar uma ún
 Vou agora me debruçar sobre as faixas de preços e em seguida farei um cruzamento dos dados de preços e tags.
 
 ```{r}
-#| child: "docs/capitulos/7-price.qmd"
+#| child: "capitulos/7-price.qmd"
 ```
 
 ### Investigando jogos bem avaliados
 
 ```{r}
-#| child: "docs/capitulos/8-reviews.qmd"
+#| child: "capitulos/8-reviews.qmd"
 ```
 
 ## Analise de variáveis combinadas
@@ -170,7 +171,7 @@ Vou agora me debruçar sobre as faixas de preços e em seguida farei um cruzamen
 ### Investigando variações das tags em categorias de preços
 
 ```{r}
-#| child: "docs/capitulos/9-price-tags.qmd"
+#| child: "capitulos/9-price-tags.qmd"
 ```
 
 ## Conclusão

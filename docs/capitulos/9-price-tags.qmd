@@ -1,3 +1,7 @@
+---
+params:
+  overwrite_tables: "T"
+---
 ```{r, header-price-tags-1, echo=FALSE, message=FALSE}
 ########################################################################################## #
 #'  Parte do arquivo de análise exploratória
@@ -13,7 +17,6 @@ library(dplyr)
 # library(janitor)
 source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
 source(here::here("R/fct-auxiliares/fct_add_price_categ.R"))
-switch_overwrite_initial_tables <- F
 ```
 
 #### Tags e preços
@@ -21,7 +24,8 @@ switch_overwrite_initial_tables <- F
 Agora vou cruzar as informações relacionadas às tags e preços.
 
 ```{r, tag-price-group, echo=F}
-  if(switch_overwrite_initial_tables){
+## Escrevendo base de dados
+if(params$overwrite_tables){
   df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
   
   ## Recategorizando variável de preços
@@ -124,7 +128,7 @@ df_price_categ_verExp |>
 
 Observei que a maioria das tags possui poucas amostras, ou seja, na nossa base de dados e em geral na Steam, **poucos jogos são lançados acima dos \$60 independente da tag**, o que reflete na pouca quantidade de tags dentre os jogos.
 
-Em comparação com a população de jogos, o tamanho da amostra para essa categoria de preço é pequena comparada à nossa base de dados, do total de **`r total_jogos`** apenas **`r round(100*sum(df_price_count[df_price_count$price_categ == "Muito Caro",]$count)/sum(df_price_count$count),2)`%** ou `r df_price_count[df_price_count$price_categ == "Muito Caro"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Muito Caro",]$count)` tags) estão nesta faixa de valores.
+Em comparação com a população de jogos, o tamanho da amostra para essa categoria de preço é pequena comparada à nossa base de dados, do total de **`r total_jogos`** apenas **`r round(100*sum(df_price_count[df_price_count$price_categ == "Muito Caro",]$count)/sum(df_price_count$count),2)`%** ou `r df_price_count[df_price_count$price_categ == "Muito Caro",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Muito Caro",]$count)` tags) estão nesta faixa de valores.
 
 ##### Avaliando os jogos caros (Caro)
 
@@ -151,7 +155,7 @@ df_price_categ_exp |>
 
 O número de contagem por tag **já é consideravelmente maior** que a faixa anterior, ou seja temos uma quantidade de jogos maior nessa faixa de preços.
 
-Nesta faixa temos **`r round(100*sum(df_price_count[df_price_count$price_categ == "Caro",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Caro"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Caro",]$count)` tags) nesse segmento. Indicando um aumento significativo da quantidade de jogos, mas ainda uma proporção pequena na Steam.
+Nesta faixa temos **`r round(100*sum(df_price_count[df_price_count$price_categ == "Caro",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Caro",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Caro",]$count)` tags) nesse segmento. Indicando um aumento significativo da quantidade de jogos, mas ainda uma proporção pequena na Steam.
 
 ##### Avaliando os jogos medianos (Medio)
 
@@ -176,7 +180,7 @@ df_price_categ_med |>
   gt::cols_label("tags_all" = "Categorias", "count" = "Contagem Médios")
 ```
 
-Os números na faixa de preço continuam crescendo, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Medio",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Medio"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Medio",]$count)` tags) nesse segmento, chegando à um valor mais expressivo de 10% da base de dados.
+Os números na faixa de preço continuam crescendo, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Medio",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Medio",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Medio",]$count)` tags) nesse segmento, chegando à um valor mais expressivo de 10% da base de dados.
 
 ##### Avaliando os jogos "baratos" (Barato)
 
@@ -201,7 +205,7 @@ df_price_categ_low |>
   gt::cols_label("tags_all" = "Categorias", "count" = "Contagem Baratos")
 ```
 
-Os números de jogos para esse intervalo de preço são **`r round(100*sum(df_price_count[df_price_count$price_categ == "Barato",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Barato"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Barato",]$count)` tags) nesse segmento, mais um crescimento grande, agora com um quarto dos dados da nossa base.
+Os números de jogos para esse intervalo de preço são **`r round(100*sum(df_price_count[df_price_count$price_categ == "Barato",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Barato",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Barato",]$count)` tags) nesse segmento, mais um crescimento grande, agora com um quarto dos dados da nossa base.
 
 ##### Avaliando os jogos "muito baratos" (Muito Barato)
 
@@ -226,22 +230,22 @@ df_price_categ_verLow |>
   gt::cols_label("tags_all" = "Categorias", "count" = "Contagem Muito Baratos")
 ```
 
-Os números na faixa de preço crescem um pouco mais, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Muito Barato",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Muito Barato"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Muito Barato",]$count)` tags) nesse segmento, ou seja, mais de um terço da nossa base. Se pensarmos nos dois intervalos mais baratas, temos mais da metade dos jogos cadastrados, sem dúvida onde os jogos estão mais concentrados.
+Os números na faixa de preço crescem um pouco mais, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Muito Barato",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Muito Barato",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Muito Barato",]$count)` tags) nesse segmento, ou seja, mais de um terço da nossa base. Se pensarmos nos dois intervalos mais baratas, temos mais da metade dos jogos cadastrados, sem dúvida onde os jogos estão mais concentrados.
 
-##### Avaliando os jogos gratuitos (Free)
+##### Avaliando os jogos gratuitos (Gratuitos)
 
 ```{r, tag-price-free-mean-median}
 ## Verificando média e mediana por categoria "Free"
-mean_free <- round(mean(df_price_categ$count[df_price_categ$price_categ == "Free"]), 2)
-median_free <- round(median(df_price_categ$count[df_price_categ$price_categ == "Free"]), 2)
-sd_free <- round(sd(df_price_categ$count[df_price_categ$price_categ == "Free"]), 2)
+mean_free <- round(mean(df_price_categ$count[df_price_categ$price_categ == "Gratuito"]), 2)
+median_free <- round(median(df_price_categ$count[df_price_categ$price_categ == "Gratuito"]), 2)
+sd_free <- round(sd(df_price_categ$count[df_price_categ$price_categ == "Gratuito"]), 2)
 ```
 
-Na última faixa de preços, os **jogos gratuitos**, as variações diminuem. A média é de`r mean_free`, mediana `r median_free` e o desvio padrão `r sd_free`.
+Na última faixa de preços, os **jogos gratuitos**, as variações diminuem. A média é de `r mean_free`, mediana `r median_free` e o desvio padrão `r sd_free`.
 
 ```{r, tag-price-free}
 df_price_categ_free <- df_price_categ |> 
-  dplyr::filter(price_categ == "Free") |> 
+dplyr::filter(price_categ == "Gratuito") |> 
   dplyr::arrange(desc(count))
 
 df_price_categ_free |> 
@@ -251,7 +255,7 @@ df_price_categ_free |>
   gt::cols_label("tags_all" = "Categorias", "count" = "Contagem Gratuitos")
 ```
 
-Agora temos uma pequena diminução do número de jogos em relação ao segmento anterior, podendo ser causada tanto pelas filtragens, sendo uma delas a quantidade de avaliações e usuários por jogo, quanto a própria baixa popularidade nessa faixa de valor, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Free",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Free"]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Free",]$count)` tags) nesse segmento, ainda uma quantidade considerável.
+Agora temos uma pequena diminução do número de jogos em relação ao segmento anterior, podendo ser causada tanto pelas filtragens, sendo uma delas a quantidade de avaliações e usuários por jogo, quanto a própria baixa popularidade nessa faixa de valor, com **`r round(100*sum(df_price_count[df_price_count$price_categ == "Gratuito",]$count)/sum(df_price_count$count),2)`%** dos jogos, ou `r df_price_count[df_price_count$price_categ == "Gratuito",]$count` jogos (um total de `r sum(df_price_categ[df_price_categ$price_categ == "Gratuito",]$count)` tags) nesse segmento, ainda uma quantidade considerável.
 
 #### Resumo das faixas de preço
 
@@ -260,6 +264,84 @@ Um ponto interessante e que foi observado foi de praticamente **dois terços**, 
 ### Visualizando top tags por faixa de preço
 
 ```{r, r-cbind-categoria-preco}
+## Visualizar no formato de tabelas
+df_price_categ_all <- cbind(df_price_categ_verExp |> 
+                              dplyr::slice_head(n = n_show),
+                            df_price_categ_exp |> 
+                              dplyr::slice_head(n = n_show), 
+                            df_price_categ_med |> 
+                              dplyr::slice_head(n = n_show), 
+                            df_price_categ_low |> 
+                              dplyr::slice_head(n = n_show), 
+                            df_price_categ_verLow |> 
+                              dplyr::slice_head(n = n_show), 
+                          df_price_categ_free |> 
+                              dplyr::slice_head(n = n_show)) |> 
+  dplyr::rename(tags_verExp = 1, price_verExp = 2, count_verExp = 3,
+                tags_exp = 4, price_exp = 5, count_exp = 6,
+                tags_med = 7, price_med = 8, count_med = 9,
+                tags_low = 10, price_low = 11, count_low = 12,
+                tags_verLow = 13, price_verLow = 14, count_verLow = 15,
+                tags_free = 16, price_free = 17, count_free = 18) |> 
+  dplyr::select(-2, -5, -8, -11, -14, -17) |>
+  dplyr::mutate(prop_free = round(count_free/sum(count_free)*100, 1), 
+                prop_verLow = round(count_verLow/sum(count_verLow)*100, 1),
+                prop_low = round(count_low/sum(count_low)*100, 1), 
+                prop_med = round(count_med/sum(count_med)*100, 1), 
+                prop_exp = round(count_exp/sum(count_exp)*100, 1), 
+                prop_verExp = round(count_verExp/sum(count_verExp)*100, 1)) |> 
+  dplyr::select(tags_free, count_free, prop_free,
+                tags_verLow, count_verLow,prop_verLow,
+                tags_low, count_low, prop_low,
+                tags_med, count_med, prop_med,
+                tags_exp, count_exp, prop_exp,
+                tags_verExp, count_verExp, prop_verExp)
+
+tabela_price_categ_all <- df_price_categ_all |> 
+  dplyr::mutate(prop_free = paste0(prop_free, "%"),
+                prop_verLow = paste0(prop_verLow, "%"),
+                prop_low = paste0(prop_low, "%"),
+                prop_med = paste0(prop_med, "%"),
+                prop_exp = paste0(prop_exp, "%"),
+                prop_verExp = paste0(prop_verExp, "%")) |> 
+  gt::gt() |> 
+  gt::tab_spanner(
+    label = "Gratuitos",
+    columns = c("tags_free", "count_free", "prop_free")
+  ) |> 
+  gt::tab_spanner(
+    label = "Muito baratos",
+    columns = c("tags_verLow", "count_verLow", "prop_verLow")
+  ) |> 
+  gt::tab_spanner(
+    label = "Baratos",
+    columns = c("tags_low", "count_low", "prop_low")
+  ) |> 
+  gt::tab_spanner(
+    label = "Médios",
+    columns = c("tags_med", "count_med", "prop_med")
+  ) |> 
+  gt::tab_spanner(
+    label = "Caros",
+    columns = c("tags_exp", "count_exp", "prop_exp")
+  ) |> 
+  gt::tab_spanner(
+    label = "Muito Caros",
+    columns = c("tags_verExp", "count_verExp", "prop_verExp")
+  ) |> 
+  gt::cols_label("tags_free" = "Categoria", "count_free" = "N", "prop_free" = "Perc",
+                "tags_verLow" = "Categoria", "count_verLow" = "N", "prop_verLow" = "Perc",
+                "tags_low" = "Categoria", "count_low" = "N", "prop_low" = "Perc",
+                "tags_med" = "Categoria", "count_med" = "N", "prop_med" = "Perc",
+                "tags_exp" = "Categoria", "count_exp" = "N", "prop_exp" = "Perc",
+                "tags_verExp" = "Categoria", "count_verExp" = "N", "prop_verExp" = "Perc")
+
+tabela_price_categ_all
+```
+
+Para efeito de comparação, por se tratar do modo de jogo e não de uma categoria propriamente dita, eu vou remover as tags "Singleplayer" e Multiplayer" para as futuras análises, mas eles também serão tratados na conclusão.
+
+```{r, r-cbind-categoria-preco-without-singlemulti}
 ## Visualizar no formato de tabelas
 df_price_categ_all <- cbind(df_price_categ_verExp |> 
                               dplyr::filter(!(tags_all %in% c("Singleplayer", "Multiplayer"))) |> 
@@ -341,6 +423,7 @@ tabela_price_categ_all <- df_price_categ_all |>
 tabela_price_categ_all
 ```
 
+
 Coloquei as informações separadas por categoria de preços, mostrando a proporção de cada tag nas faixas de preço, mas, pelo tamanho da tabela, decidi apresentar de forma diferente.
 
 ```{r, categ-price-graph}
@@ -405,11 +488,11 @@ Utilizando a forma gráfica por linhas, por termos muitas tags, o gráfico ficou
 library(gt)
 
 df_tab[1:n_show,] |> 
-  mutate(`Free` = prop_free, `Muito Barato` = prop_verLow, `Barato` = prop_low,
+  mutate(`Gratuito` = prop_free, `Muito Barato` = prop_verLow, `Barato` = prop_low,
          `Medio` = prop_med, `Caro` = prop_exp, `Muito Caro` = prop_verExp) |> 
   gt() |> 
   data_color(
-    columns = c(`Free`, `Muito Barato`, `Barato`,
+    columns = c(`Gratuito`, `Muito Barato`, `Barato`,
                 `Medio`, `Caro`, `Muito Caro`),
     fn = scales::col_numeric(
       palette = c("#DAE9E8", "#2A7DC0"),
@@ -418,7 +501,7 @@ df_tab[1:n_show,] |>
     apply_to = "fill"
   ) |> 
 cols_merge(
-  columns = c(`Free`, tags_free),
+  columns = c(`Gratuito`, tags_free),
   pattern = "{2}") |> 
   cols_merge(
     columns = c(`Muito Barato`, tags_verLow),
@@ -435,7 +518,7 @@ cols_merge(
   cols_merge(
     columns = c(`Muito Caro`, tags_verExp),
     pattern = "{2}") |> 
-cols_move_to_start(c(`Free`, `Muito Barato`, `Barato`,
+  cols_move_to_start(c(`Gratuito`, `Muito Barato`, `Barato`,
                        `Medio`, `Caro`, `Muito Caro`)) |> 
   gt::cols_hide(columns = contains(c("tags", "prop", "count")))
 
@@ -452,19 +535,20 @@ df_tab_prob <- df_tab |>
   # dplyr::filter(row_number() < n()) ## Caso tenha uma linha de total, remover última linha
 
 ## Baseado em quantis
-brks_all <- quantile(df_tab_prob, probs = seq(.01, .99, .1), na.rm = TRUE)
+# brks_all <- quantile(df_tab_prob, probs = seq(.01, .99, .1), na.rm = TRUE)
 
 ## Baseado em mínimos e máximos
 brks_all <- c(round(seq(min(df_tab_prob), max(df_tab_prob), length.out = 12), 1))
 
-
-# ## Salvando imagem
+## Salvando imagem
+if(params$overwrite_tables == "T"){
 # ggsave(paste0(here::here(), "/docs/Analise/capitulos/data-raw/ranking_color_pal.png"), show_col(col_numeric(c("#DAE9E8", "#2A7DC0"), domain = NULL)(brks_all), labels = F))
-# ## Após salvar imagem, eu fiz manualmente a adição dos valores em formato de texto 
+}
+## Após salvar imagem, eu fiz manualmente a adição dos valores em formato de texto 
 
 ```
 
-![Paleta de cores](cap-images/ranking_palette_genres_prices.png "Title: cores e percentuais"){fig-alt="Imagem com paleta de cores e suas porcentagens" width="30%"}
+![Paleta de cores](capitulos/cap-images/ranking_palette_genres_prices.png "Cores e percentuais"){fig-alt="Imagem com paleta de cores e suas porcentagens" width="30%"}
 
 #### Análises preço e tags
 
@@ -488,7 +572,7 @@ top100_id <- df_all_games |>
 
 df_top100_tags <- df_price_categ_split |> 
   dplyr::filter(app_id %in% top100_id) |> 
-  dplyr::group_by(tags_all) |> 
+dplyr::group_by(tags_all) |> 
   dplyr::summarise(count = n(), .groups = NULL) |> 
   dplyr::arrange(desc(count)) |>
   dplyr::slice_head(n = 10)
@@ -499,7 +583,8 @@ df_top100_games <- df_all_games |>
 
 
 df_top100_tags |> 
-  gt::gt()
+  gt::gt() |> 
+  gt::cols_label("tags_all" = "Categorias", "count" = "Contagem")
 
 ```
 
@@ -509,20 +594,27 @@ Testei novamente a base com os top 200 jogos ao invés de 100, e o resultado foi
 
 ```{r, top100-reviews-tags-positive}
 
-quantile(df_top100_games$positive_ratio, probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))
+quant_top100_games <- quantile(df_top100_games$positive_ratio, probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))
 
 ggplot(df_top100_games, aes(x = positive_ratio)) +
   geom_histogram(binwidth = 5, fill = "lightblue") +
-  theme_minimal()
+  theme_minimal() +
+  labs(title = "Histograma da nota de avaliação nos jogos",
+       subtitle = "Contagem agrupada em intervalos de 5",
+       alt = "Histograma de distribuição da nota de avaliação nos jogos",
+       x = "Nota",
+       y = "",
+       fill = "")
+  
 ```
 
-Avaliando a taxa de avaliações positivas, que vai de 0 a 99 e é calculado com base na relação de opiniões positivas e negativas dos usuários, temos um índice bem alto, na maioria dos jogos. Com praticamente metade desses jogos tendo avaliações acima de 90, e concentração das avaliações entre 70-98. Alguns poucos jogos ficaram abaixo disso, e possivelmente são jogos que podem ser investigados para entender o que motiva essas avaliações tão negativas. O maior exemplo é o Battlefield 2042 com o pior índice de avaliações (35/100), Tale of Immortal (51/100) e PUBG: Battlegrounds (57/100). Em minha experiência, são jogos que realmente foram lançados com problemas e/ou tiveram problemas pós lançamento, portanto é justificável esse resultado baixo nas avaliações.
+Observando a taxa de avaliações positivas, que vai de 0 a 99 e é calculado com base na relação de opiniões positivas e negativas dos usuários, temos um índice bem alto, na maioria dos jogos. Com praticamente metade desses jogos tendo avaliações acima de 90, e concentração das avaliações entre 70-98. Alguns poucos jogos ficaram abaixo disso, e possivelmente são jogos que podem ser investigados para entender o que motiva essas avaliações tão negativas. O maior exemplo é o Battlefield 2042 com o pior índice de avaliações (35/100), Tale of Immortal (51/100) e PUBG: Battlegrounds (57/100). Em minha experiência, são jogos que realmente foram lançados com problemas e/ou tiveram problemas pós lançamento, portanto é justificável esse resultado baixo nas avaliações.
 
 ##### Tags em jogos com melhores avaliações
 
 Outra análise interessante é a dos jogos mais bem avaliados, definido pela taxa de avaliações positivas, que pode não ser tão precisa pois acaba tendo jogos com um número de avaliações pequeno em comparação ao tópico anterior, mas pode trazer alguns insights em relação a tags de jogos que são bem avaliadas.
 
-```{r, top100-positive-tags}
+```{r, top100-tags-positive}
 top100_id <- df_all_games |> 
   dplyr::arrange(desc(positive_ratio)) |> 
   dplyr::slice_head(n = 100) |> 
@@ -535,27 +627,13 @@ df_top100_tags <- df_price_categ_split |>
   dplyr::arrange(desc(count)) |>
   dplyr::slice_head(n = 10)
 
-# ## Jogos do top100
-# df_top100_games <- df_all_games |>
-#   dplyr::arrange(desc(positive_ratio)) |>
-#   dplyr::slice_head(n = 100)
-
 df_top100_tags |> 
-  gt::gt()
+  gt::gt() |> 
+  gt::cols_label("tags_all" = "Categorias", "count" = "Contagem")
 ```
 
 Vemos uma diferença considerável nas tags comparado aos jogos com mais avaliações, agora mais em linha com os jogos gratuitos e baratos. A **tag Singleplayer** está presente em **67% dos jogos**, e a **tag Multiplayer** aparece em **apenas um jogo**, mostrando uma diferença enorme da classificação anterior. Outra tag que **ganha mais destaque** é a de **jogos indie**, com **quase o dobro de jogos** que a avaliação anterior. As **tags Action, Open World e Co-Op caem drásticamente**, com respectivos 32% (contra 91% da anterior), 2% (Contra 54% da anterior) e 2% (Contra 54%). Mostrando que as diferenças nessas duas formas de ranquear os jogos refletem em mudanças bem grandes dos jogos.
 
-```{r, top100-positive-tags-reviews}
-
-quantile(df_top100_games$user_reviews, probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))
-
-ggplot(df_top100_games, aes(x = user_reviews)) +
-  geom_histogram(binwidth = 1000) +
-  theme_minimal()
-```
-
-Outro ponto que acho importante citar, que podemos notar pelo histograma e pelos quartis, é que **aproximadamente dos terços** da nossa base p**ossui entre 120-1000 avaliações**, com apenas alguns poucos jogos que tem mais avaliações, e por conseguinte mais populares.
 
 ##### Jogos competitivos
 

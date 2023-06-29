@@ -1,3 +1,7 @@
+---
+params:
+  overwrite_tables: "T"
+---
 ```{r, header-base-3, echo=FALSE, message=FALSE}
 ########################################################################################## #
 #'  Parte do arquivo de análise exploratória
@@ -98,7 +102,7 @@ notGames_col <- paste0(notGames, collapse = "|")
 ## mode = 2, comparação com tags
 df_games_selTags <- func_filter_not_games(df_base_3_complete, notGames_col, mode = 2)
 
-if(params$overwrite_tables == "TS"){
+if(params$overwrite_tables == "T"){
   data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
 }
 ```

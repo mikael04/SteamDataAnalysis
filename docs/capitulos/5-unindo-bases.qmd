@@ -1,3 +1,7 @@
+---
+params:
+  overwrite_tables: "F"
+---
 ```{r, header-unindo-bases, echo=FALSE, message=FALSE}
 ########################################################################################## #
 #'  Parte do arquivo de análise exploratória

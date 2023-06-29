@@ -1,5 +1,4 @@
 ---
-title: "My Child Report"
 params:
   overwrite_tables: "T"
 ---

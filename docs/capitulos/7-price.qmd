@@ -24,26 +24,19 @@ df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-gam
 ## Selecionando apenas colunas utilizadas
 df_payed_games <- df_all_games |> 
   dplyr::filter(price_final > 0 & price_original > 0)
-
-## Verificando menor valor (em dólares)
-min_games <- min(df_payed_games$price_original)
-## Verificando maior valor (em dólares)
-max_games <- max(df_payed_games$price_original)
-## Verificando valor central (em dólares)
-median_games <- median(df_payed_games$price_original)
 ## Verificando quartis
 quant_games <- quantile(df_payed_games$price_original, probs = c(0, 0.25, 0.5, 0.75, 1))
 
-df_med_games <- data.frame(metrica = character(),
-                           valores = character())
+df_med_games <- data.frame(`Métrica` = character(),
+                           `Valores`  = character())
 
 # summary(df_payed_games$price_original)
 
-df_med_games[nrow(df_med_games)+1, ] = c("Mínimo", min_games)
+df_med_games[nrow(df_med_games)+1, ] = c("Mínimo", round(quant_games[1], 2))
 df_med_games[nrow(df_med_games)+1, ] = c("1° Quartil", round(quant_games[2], 2))
-df_med_games[nrow(df_med_games)+1, ] = c("Mediana", median_games)
+df_med_games[nrow(df_med_games)+1, ] = c("Mediana", round(quant_games[3], 2))
 df_med_games[nrow(df_med_games)+1, ] = c("3° Quartil", round(quant_games[4], 2))
-df_med_games[nrow(df_med_games)+1, ] = c("Máximo", max_games)
+df_med_games[nrow(df_med_games)+1, ] = c("Máximo", round(quant_games[5], 2))
 
 df_med_games |> 
   gt::gt()
