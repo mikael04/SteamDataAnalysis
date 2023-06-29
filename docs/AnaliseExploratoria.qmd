@@ -11,7 +11,7 @@ theme: cerulean
 reference-location: margin
 code-fold: true
 code-tools: 
-    source: https://github.com/mikael04/SteamDashAnalysis.git
+  source: https://github.com/mikael04/SteamDataAnalysis.git
 params:
   run_all_code: "T"
   overwrite_tables: "T"
