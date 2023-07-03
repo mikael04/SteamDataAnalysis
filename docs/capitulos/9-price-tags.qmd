@@ -28,8 +28,11 @@ Agora vou cruzar as informações relacionadas às tags e preços.
 if(params$overwrite_tables){
   df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
   
-  ## Recategorizando variável de preços
+## Recategorizando variável de preços
   df_all_games <- func_add_price_categ(df_all_games, F)
+  
+  ## Criando tabela com nova coluna de preço categorizado
+  data.table::fwrite(df_all_games, here::here("data-raw/created-tables/db-all-games-tags-all-price-categ.csv"))
   
   df_price_count <- df_all_games |> 
     dplyr::select(app_id, price_categ) |> 
@@ -40,6 +43,9 @@ if(params$overwrite_tables){
                   percentage = round(100*count/total, 2)) |> 
     dplyr::select(-total)
   
+  ## Escrevendo de contagem por faixa de preço
+  data.table::fwrite(df_price_count, here::here("data-raw/created-tables/df-price-count.csv"))
+  
   ## Criando tabela de agrupamento (contagem)
   df_price_categ_split <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all-split.csv")) 
   
@@ -48,10 +54,8 @@ if(params$overwrite_tables){
     dplyr::summarise(count = n()) |> 
     dplyr::ungroup()
   
-  ## Escrevendo tabelas
-  data.table::fwrite(df_all_games, here::here("data-raw/created-tables/db-all-games-tags-all-price-categ.csv"))
+  ## Escrevendo de preço por categorias
   data.table::fwrite(df_price_categ, here::here("data-raw/created-tables/df-price-categ.csv"))
-  data.table::fwrite(df_price_count, here::here("data-raw/created-tables/df-price-count.csv"))
   
 }else{
   ## Tabela completa com todos os jogos

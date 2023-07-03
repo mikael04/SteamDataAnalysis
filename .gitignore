@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+config/config.yml
 docs/capitulos/1-analise-base-1.html
 docs/capitulos/1-analise-base-1_files/*
 docs/capitulos/2-analise-base-2.html
@@ -36,3 +37,4 @@ data-raw/steam-data/db-3/users.csv
 data-raw/steam-data/db-3/old/*
 data-raw/steam-data/db-4/dataset.csv
 data-raw/steam-data/db-4/GameReview.zip
+

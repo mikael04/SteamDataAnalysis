@@ -43,6 +43,7 @@ Usarei o Skimr para a base de dados completa e verificarei quais dados podem ser
 # df_base_1 <- as.data.frame(mongo_db$find())
 
 df_base_1 <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+# db_base_1 <- mongolite::mongo(collection = "db-games-1-raw", db = mongo_database, url = url_srv, verbose = TRUE)
 ```
 
 ```{r, skimr}

@@ -12,10 +12,17 @@ reference-location: margin
 code-fold: true
 code-tools: 
   source: https://github.com/mikael04/SteamDataAnalysis.git
+format:
+  html:
+    output-file: index.html
+  docx: 
+    toc: true
+    number-sections: true
+    highlight-style: github
 params:
   run_all_code: "T"
   overwrite_tables: "T"
-output-file: index.html
+  use_mongodb: "T"
 ---
 
 ```{r setup, include=FALSE}
@@ -35,6 +42,12 @@ library(dplyr)
 # switch_overwrite_tables <- T
 
 print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
+```
+
+
+```{r}
+#| eval: !expr params$use_mongodb=="T"
+#| child: "capitulos/0-mongoDB-conn.qmd"
 ```
 
 # Análise dos dados da Steam
@@ -99,8 +112,13 @@ Agora que já uni as duas bases, e tenho uma quantidade mais razoável de jogos 
 
 ```{r, categs-count}
 if(params$run_all_code == "F"){
-  df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+  if(params$use_mongodb == "T"){
+    my_collection = mongolite::mongo(collection = "db-all-games-tags-all", db = "Steam", url = url_srv)
+  }else{
+    df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+  }
 }
+
 rows_categ <- df_all_games |> 
   dplyr::filter(!(is.na(categories)) & categories != "") |> 
   nrow()

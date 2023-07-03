@@ -183,6 +183,13 @@ df_all_games_new_tags <- df_all_games |>
   dplyr::select(-tags, -tags_extra) |> 
   dplyr::inner_join(df_tags_all, by = "app_id") |> 
   dplyr::rename(tags_all = tags)
+
+
+## Escrevendo base de dados
+if(params$overwrite_tables){
+  data.table::fwrite(df_all_games_new_tags, here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+}
+
 ```
 
 
@@ -207,11 +214,10 @@ df_all_games_filt <- df_all_games_split |>
   dplyr::mutate(tags_all_ = paste0(tags_all, collapse = ",")) |> 
   dplyr::distinct(app_id, .keep_all = T) |> 
   dplyr::select(-tags_all) |> 
-  dplyr::rename(tags_all = tags_all_)
+  dplyr::rename(tags_all = tags_all_) |> 
+  dplyr::ungroup()
 
-## Escrevendo base de dados
-if(params$overwrite_tables){
-  data.table::fwrite(df_all_games_filt, here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
-}
+all.equal(df_all_games_new_tags, df_all_games_filt)
+compare::compare(df_all_games_new_tags, df_all_games_filt, allowAll = T, equal = T)
 
 ```
