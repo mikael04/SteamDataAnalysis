@@ -1,0 +1,200 @@
+```{r, header-database, echo = F}
+########################################################################################## #
+#'  Arquivo utilizado para envio das bases para o servidor mongoDB
+#' 
+#'  Autor: Mikael Marin Coletto
+#'  Data: 11/03/23
+########################################################################################## #
+
+## 0.1 - Bibliotecas e scripts fontes----
+# library(mongolite)
+library(dbplyr)
+```
+
+## MongoDB
+
+```{r, config, eval=F}
+# 
+# ## Dados padrão do mongo
+# mongo_db_user <- config::get("mongo_db_user", file = here::here("config/config.yml"))
+# mongo_db_password <- config::get("mongo_db_password", file = here::here("config/config.yml"))
+# mongo_db_url_extra <- config::get("mongo_db_url_extra", file = here::here("config/config.yml"))
+# mongo_database <- config::get("mongo_database", file = here::here("config/config.yml"))
+# 
+# url_srv <- paste0("mongodb+srv://", mongo_db_user, ":", mongo_db_password, mongo_db_url_extra)
+# 
+# mongo_collection <- config::get("mongo_collection_counts", file = here::here("config/config.yml"))
+# mongo_db <- mongolite::mongo(collection = mongo_collection, db = mongo_database, url = url_srv, verbose = TRUE)
+
+```
+
+```{r, mongoDB, eval=F}
+
+# ## Inserindo dados da base 1 raw
+# db_games_1_raw <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+# mongo_db <- mongolite::mongo(collection = "db-games-1-raw", db = mongo_database, url = url_srv, verbose = TRUE)
+# mongo_db$drop()
+# mongo_db$insert(db_games_1_raw)
+# 
+# ## Inserindo dados da base 3 raw
+# db_games_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+# mongo_db <- mongolite::mongo(collection = "db-games-3-raw", db = mongo_database, url = url_srv, verbose = TRUE)
+# mongo_db$drop()
+# mongo_db$insert(db_games_3_raw)
+# 
+# ## Inserindo dados da base 1 tratada
+# db_games_1 <- data.table::fread(here::here("data-raw/created-tables/db-games-1.csv"))
+# mongo_db <- mongolite::mongo(collection = "db-games-1", db = mongo_database, url = url_srv, verbose = TRUE)
+# mongo_db$drop()
+# mongo_db$insert(db_games_1)
+```
+
+## PostGree (neonDB)
+
+```{r, postgre, eval=F}
+library(RPostgreSQL)
+dsn_database <- config::get("DATABASE", file = here::here("config/postgreCon.yml"))   # Specify the name of your Database
+
+# Specify host name e.g.:"aws-us-east-1-portal.4.dblayer.com"
+dsn_hostname <- config::get("HOST", file = here::here("config/postgreCon.yml"))
+dsn_port <- config::get("PORT", file = here::here("config/postgreCon.yml"))     # Specify your port number. e.g. 98939
+dsn_uid <- config::get("USER", file = here::here("config/postgreCon.yml"))      # Specify your username. e.g. "admin"
+dsn_pwd <- config::get("PASSWORD", file = here::here("config/postgreCon.yml"))  # Specify your password. e.g. "xxx"
+library(RPostgreSQL)
+tryCatch({
+    drv <- dbDriver("PostgreSQL")
+    print("Connecting to Database…")
+    con <- dbConnect(drv, 
+                 dbname = dsn_database,
+                 host = dsn_hostname, 
+                 port = dsn_port,
+                 user = dsn_uid, 
+                 password = dsn_pwd)
+    print("Database Connected!")
+    },
+    error=function(cond) {
+            print("Unable to connect to Database.")
+    })
+
+# dbplyr::as.sql(dplyr::tbl(nycflights13::flights))
+
+# df <- nycflights13::flights
+# df_tbl <- tibble::as_tibble(df)
+# df_as_sql <- dbplyr::as.sql(con, df_tbl)
+# dbplyr::db_copy_to(con, dbplyr::as.sql(dplyr::tbl(nycflights13::flights)), "flights")
+# 
+# RPostgreSQL::dbWriteTable(con, name = "table", df)
+# 
+# dbplyr::db_copy_to(con, df_tbl, "flights")
+# flights <- "flights"
+# RPostgreSQL::dbWriteTable(conn = con, flights, df_tbl)
+# dbWriteTable(con, "mtcars", mtcars[1:10, ], overwrite = TRUE)
+# df
+
+
+tryCatch({
+    drv <- dbDriver("PostgreSQL")
+    print("Connecting to Database…")
+    con <- dbConnect(drv, 
+                 dbname = dsn_database,
+                 host = dsn_hostname, 
+                 port = dsn_port,
+                 user = "admin", 
+                 password = "PBGrT6FVm0Ug",
+                 options="-c search_path=steamDB")
+    print("Database Connected!")
+    },
+    error=function(cond) {
+            print("Unable to connect to Database.")
+    })
+
+
+
+cars <- mtcars |>  tibble::rownames_to_column("carname") 
+  
+dbWriteTable(con, 'steamdb', cars) # add the mtcars data set to your database as a table called "cars"
+
+
+dbSendQuery(con, "GRANT CREATE ON SCHEMA public TO admin;")
+dbSendQuery(con, "GRANT USAGE ON schema public TO admin;")
+dbSendQuery(con, "SHOW client_min_messages;")
+
+dbListTables(con) 
+
+
+dsn_database <- config::get("DATABASE", file = here::here("config/postgreCon.yml"))
+dsn_hostname <- config::get("HOST", file = here::here("config/postgreCon.yml"))
+dsn_port <- config::get("PORT", file = here::here("config/postgreCon.yml"))
+
+tryCatch({
+    drv <- dbDriver("PostgreSQL")
+    print("Connecting to Database…")
+    con <- dbConnect(drv, 
+                 dbname = dsn_database,
+                 host = dsn_hostname, 
+                 port = dsn_port,
+                 user = "admin", 
+                 password = "PBGrT6FVm0Ug")
+    print("Database Connected!")
+  },
+    error=function(cond) {
+            print("Unable to connect to Database.")
+    })
+```
+
+## SQLite
+
+```{r, sqlite, echo=FALSE}
+library(DBI)
+
+## Conexão com o SQLite local
+steamdb <- dbConnect(RSQLite::SQLite(), here::here("data-raw/steamdb.sqlite"))
+dbListTables(steamdb)
+
+## Inserindo dados da base 1 raw
+db_games_1_raw <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+dbplyr::db_copy_to(steamdb, "db_base_1_raw", db_games_1_raw, overwrite = T, temporary = F,
+                   indexes = list(
+                     "AppID",
+                     "Metacritic score",
+                     "User score",
+                     "Positive",
+                     "Negative",
+                     "Categories",
+                     "Genres",
+                     "Tags")
+                   )
+# dbRemoveTable(steamdb, "db_base_1")
+
+## Inserindo dados da base 3 raw
+db_games_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+dbWriteTable(steamdb, "db_base_3_raw", db_games_3_raw, overwrite = T, temporary = F,
+                   indexes = list(
+                     "app_id",
+                     "date_release",
+                     "positive_ratio",
+                     "user_reviews",
+                     "price_final",
+                     "price_original")
+                   )
+
+## Inserindo dados da base 3 recomendações
+db_games_3_rec <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
+dbWriteTable(steamdb, "db_base_3_recommendations", db_games_3_rec, overwrite = T, temporary = F,
+                   indexes = list(
+                     "app_id",
+                     "date_release",
+                     "positive_ratio",
+                     "user_reviews",
+                     "price_final",
+                     "price_original")
+                   )
+
+dbListTables(steamdb)
+
+dbGetQuery(steamdb, 'SELECT * FROM db_base_1 LIMIT 5')
+
+
+
+```
+

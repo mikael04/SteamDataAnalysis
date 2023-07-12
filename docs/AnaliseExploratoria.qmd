@@ -1,5 +1,5 @@
 ---
-title: "Analise Exploratoria"
+title: "Analisando preços e categorias no sucesso dos jogos da Steam"
 author: "Mikael M Coletto"
 date: "06/30/2023"
 toc: true
@@ -40,6 +40,9 @@ library(dplyr)
 
 ## Switch para reescrever tabelas iniciais
 # switch_overwrite_tables <- T
+
+## Conexão com o SQLite local (base de dados)
+steamdb <- dbConnect(RSQLite::SQLite(), here::here("data-raw/steamdb.sqlite"))
 
 print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
 ```

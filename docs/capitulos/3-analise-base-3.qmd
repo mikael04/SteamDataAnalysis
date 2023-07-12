@@ -24,10 +24,21 @@ Esta base de dados se encontra no Kaggle, através deste link:
 Após a exclusão da segunda base de dados, decidi verificar a última que havia encontrado de jogos da Steam.
 
 ```{r, db-3}
-df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
-df_base_3 <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+# df_base_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+# df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
 
 # df_base_3_users <- data.table::fread(here::here("data-raw/steam-data/db-3/users.csv"))
+
+
+db_base_3_raw <- dplyr::tbl(steamdb, "db_base_3_raw") |> 
+  dplyr::collect()
+
+df_base_3_reviews <- dplyr::tbl(steamdb, "db_base_3_recommendations") |> 
+  dplyr::collect()
+
+# db_base_3_raw <- dplyr::tbl(steamdb, "db_base_3_raw") |> 
+#   dplyr::collect()
+# df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
 
 ```
 
@@ -44,7 +55,7 @@ Aplicando novamente os filtros utilizados para as bases anteriores, mas adaptand
 3.  O jogo precisa ter pelo menos 50 mil usuários no caso de ser gratuito, e pelo menos 20 mil usuários para jogos pagos.
 
 ```{r, filtro-base-3}
-df_base_3 <- df_base_3 |> 
+df_base_3_raw <- df_base_3_raw |> 
   dplyr::filter(positive_ratio < 100 & user_reviews >= 100)
 ```
 
@@ -63,7 +74,7 @@ Porém, ao contar quantos jogos distintos haviam na tabela de reviews, tivemos o
 O mesmo processo de deduplicação precisou ser feito na nova base.
 
 ```{r, dedup-newbase}
-df_dupli <- df_base_3 |> 
+df_dupli <- df_base_3_raw |> 
   janitor::get_dupes(title)
 ```
 
@@ -85,7 +96,7 @@ for(i in 1:length(out)){
 df_metadata <- do.call(rbind.data.frame, out)
 
 ## Adicionando coluna de tags do df_metadata, e adicionando colunas de categoria, genero e tags extra do df anterior
-df_base_3_complete <- dplyr::left_join(df_base_3, df_metadata, by = "app_id") |> 
+df_base_3_complete <- dplyr::left_join(df_base_3_raw, df_metadata, by = "app_id") |> 
   dplyr::select(-description)
 ```
 
@@ -103,7 +114,9 @@ notGames_col <- paste0(notGames, collapse = "|")
 df_games_selTags <- func_filter_not_games(df_base_3_complete, notGames_col, mode = 2)
 
 if(params$overwrite_tables == "T"){
-  data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
+  # data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
+  func_write_db(df_name = "db-games-3", df = df_games_selTags, con = steamdb, overwrite = T, 
+                index_list = "", debug = T)
 }
 ```
 
