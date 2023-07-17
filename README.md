@@ -111,12 +111,14 @@ porém, para que não fosse um projeto tão longo e para que já tivesse uma
 entrega inicial, eles foram deixados de lado como adições futuras. São
 elas:
 
-- ~~Publicar utilizando o GitHub Pages.~~ Já feito para esta versão.
+- ~~Publicar utilizando o GitHub Pages.~~ Já feito para esta versão;
 
-- Uso de um banco de dados: Já existe um arquivo e já foi feita uma
+- ~~Uso de um banco de dados: Já existe um arquivo e já foi feita uma
   conexão com um banco de dados MongoDB, porém inicialmente pela
   praticidade foi optado por utilizar arquivos nos formatos .csv e
-  .json.
+  .json..~~ O relatório foi alterado para utilizar o SQLite, buscando e salvando novas bases de dados nele;
+
+- Criar documentação resumida.
 
 - Criar um relatório resumido ou uma apresentação: Para facilitar a
   compreensão, foi pensada numa apresentação de resumo deste relatório
