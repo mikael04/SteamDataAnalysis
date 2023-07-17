@@ -1,0 +1,8 @@
+default:
+  mongo_db_user: "mongoUser"
+  mongo_db_password: "mongoPassword"
+  mongo_db_url_extra: "mongoURL"
+  mongo_database: "mongoDatabase"
+
+test:
+  var_teste: "teste"

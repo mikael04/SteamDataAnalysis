@@ -1,6 +1,8 @@
 ---
 params:
   overwrite_tables: "F"
+  use_db: "T"
+  debug: "T"
 ---
 ```{r, header-base-1, echo=FALSE, message=FALSE}
 ########################################################################################## #
@@ -14,7 +16,16 @@ params:
 ## 0.1 - Bibliotecas e scripts fontes----
 library(ggplot2)
 # # library(janitor)
+library(dplyr)
+library(dbplyr)
+library(DBI)
 source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+source(here::here("R/fct-auxiliares/fct_write_db.R"))
+
+## Conexão com o SQLite local (base de dados)
+steamdb <- dbConnect(RSQLite::SQLite(), here::here("data-raw/steamdb.sqlite"))
+
+
 ```
 
 Esta base de dados se encontra no Kaggle, através deste link:
@@ -22,27 +33,18 @@ Esta base de dados se encontra no Kaggle, através deste link:
 <https://www.kaggle.com/datasets/fronkongames/steam-games-dataset>
 
 
-
 #### Skimr
 
 Usarei o Skimr para a base de dados completa e verificarei quais dados podem ser melhor investigados. Essa função faz um resumo geral das variáveis e é bem útil para uma primeira visualização.
 
-```{r, mongoCon, echo = T, result = 'hide', message = F, warning = F, error = F}
-# ## Dados de conexão com o banco da Steam no mongo
-# mongolite::mongo_options(log_level = 1)
-# mongo_db_user <- config::get("mongo_db_user", file = "config/config.yml")
-# mongo_db_password <- config::get("mongo_db_password", file = "config/config.yml")
-# mongo_db_url_extra <- config::get("mongo_db_url_extra", file = "config/config.yml")
-# mongo_database <- config::get("mongo_database", file = "config/config.yml")
-# mongo_collection <- config::get("mongo_collection_full", file = "config/config.yml")
-# 
-# url_srv <- paste0("mongodb+srv://", mongo_db_user, ":", mongo_db_password, mongo_db_url_extra)
-# mongo_db <- mongolite::mongo(collection = mongo_collection, db = mongo_database, url = url_srv, verbose = TRUE)
-# 
-# ## Lendo e criando um dataframe com os dados do mongoDB
-# df_base_1 <- as.data.frame(mongo_db$find())
-
-df_base_1 <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+```{r, DBCon, echo = T, result = 'hide', message = F, warning = F, error = F}
+## Inserindo dados da base 1 raw
+if(params$use_db == "T"){
+  df_base_1_raw <- dplyr::tbl(steamdb, "db_base_1_raw") |> 
+    dplyr::collect()
+}else{
+  db_games_1_raw <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+}
 ```
 
 ```{r, skimr}
@@ -59,10 +61,9 @@ Para padronizar os nomes das variáveis, será utilizado o pacote `janitor`, que
 ## Usaremos a função do Janitor para editar os nomes das colunas e torná-las mais fáceis de serem manipuladas
 ## E então faremos a seleção das colunas que serão analisadas
 
-df_selected <- df_base_1 |> 
+df_selected <- df_base_1_raw |> 
   janitor::clean_names() |>
-  dplyr::select(app_id, name, developers, publishers, categories, genres, tags, release_date, estimated_owners, peak_ccu, price, windows, mac, linux, metacritic_score, user_score, positive, negative, recommendations, average_playtime_forever, median_playtime_forever, average_playtime_two_weeks, median_playtime_two_weeks) |> 
-  dplyr::mutate(release_date = lubridate::mdy(release_date)) 
+  dplyr::select(app_id, name, developers, publishers, categories, genres, tags, release_date, estimated_owners, peak_ccu, price, windows, mac, linux, metacritic_score, user_score, positive, negative, recommendations, average_playtime_forever, median_playtime_forever, average_playtime_two_weeks, median_playtime_two_weeks)
 ```
 
 ##### Removendo Softwares e não jogos
@@ -77,11 +78,11 @@ notGames <- c("Utilities", "Design & Illustration", "Animation & Modeling", "Gam
 
 notGames_col <- paste0(notGames, collapse = "|")
 
+source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
 ## Filtrando categorias consideradas não jogos
 ### Filtrando por gêneros
-df_selected_tags <- func_filter_not_games(df_selected, notGames_col, mode = 1)
-### Filtrando por tags
-df_selected_tags <- func_filter_not_games(df_selected_tags, notGames_col, mode = 2)
+df_selected_tags <- func_filter_not_games(df_selected, notGames_col, mode = 1, dbplyr = F) ## dbplyr = T não implementado
+df_selected_tags <- func_filter_not_games(df_selected_tags, notGames_col, mode = 2, dbplyr = F)
 
 ```
 
@@ -167,10 +168,19 @@ df_dupli <- df_selected_tags |>
 df_selected_tags <- df_selected_tags |> 
   dplyr::arrange(name, desc(as.integer(estimated_owners)), desc(overall)) |> 
   dplyr::distinct(name, .keep_all = T)
+```
+```{r, escrevendo-tabela-db1, echo=F, message=FALSE, include = FALSE}
+
 if(params$overwrite_tables == "T"){
-  data.table::fwrite(df_selected_tags, here::here("data-raw/created-tables/db-games-1.csv"))
+  if(params$use_db == "T"){
+    func_write_db(df_name = "db_base_1_clean", df = df_selected_tags, con = steamdb, overwrite = T, 
+                index_list = "", debug = params$debug)
+  }else{
+    data.table::fwrite(df_selected_tags, here::here("data-raw/created-tables/db-games-1.csv"))
+  }
 }
 ```
+
 
 Então esta nova regra criada respeitará primeiro o número de jogadores, o jogo que possuir mais jogadores permanecerá na base, e segundo, em caso de empate no número de jogadores, será mantido o jogo com melhor avaliação.
 

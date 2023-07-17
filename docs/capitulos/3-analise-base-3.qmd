@@ -1,6 +1,8 @@
 ---
 params:
   overwrite_tables: "T"
+  use_db: "T"
+  debug: "T"
 ---
 ```{r, header-base-3, echo=FALSE, message=FALSE}
 ########################################################################################## #
@@ -24,10 +26,16 @@ Esta base de dados se encontra no Kaggle, através deste link:
 Após a exclusão da segunda base de dados, decidi verificar a última que havia encontrado de jogos da Steam.
 
 ```{r, db-3}
-df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
-df_base_3 <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
-
-# df_base_3_users <- data.table::fread(here::here("data-raw/steam-data/db-3/users.csv"))
+if(params$use_db == "T"){
+  df_base_3_raw <- dplyr::tbl(steamdb, "db_base_3_raw") |> 
+    dplyr::collect()
+  
+  df_base_3_reviews <- dplyr::tbl(steamdb, "db_base_3_recommendations") |> 
+    dplyr::collect()
+}else{
+  df_base_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+  df_base_3_reviews <- data.table::fread(here::here("data-raw/steam-data/db-3/recommendations.csv"))
+}
 
 ```
 
@@ -44,7 +52,7 @@ Aplicando novamente os filtros utilizados para as bases anteriores, mas adaptand
 3.  O jogo precisa ter pelo menos 50 mil usuários no caso de ser gratuito, e pelo menos 20 mil usuários para jogos pagos.
 
 ```{r, filtro-base-3}
-df_base_3 <- df_base_3 |> 
+df_base_3_raw <- df_base_3_raw |> 
   dplyr::filter(positive_ratio < 100 & user_reviews >= 100)
 ```
 
@@ -63,7 +71,7 @@ Porém, ao contar quantos jogos distintos haviam na tabela de reviews, tivemos o
 O mesmo processo de deduplicação precisou ser feito na nova base.
 
 ```{r, dedup-newbase}
-df_dupli <- df_base_3 |> 
+df_dupli <- df_base_3_raw |> 
   janitor::get_dupes(title)
 ```
 
@@ -74,18 +82,26 @@ Porém, ao contrário da base anterior, neste caso todos os jogos "duplicados" s
 O próximo passo, após a verificação inicial da base 3, seria adicionar informações relacionadas às classificações dos jogos, nesse caso chamadas de "tags". Esse processo envolveu ler uma segunda base de dados (ainda presente no mesmo grupo dos dados disponibilizados) que possuía as informações de metadados dos jogos. E então houve um processo de readequação, já que esta tabela em específico veio no formato json.
 
 ```{r, add-tags}
-out <- lapply(readLines(here::here("data-raw/steam-data/db-3/games_metadata.json")), fromJSON)
+# out <- lapply(readLines(here::here("data-raw/steam-data/db-3/games_metadata.json")), fromJSON)
+# 
+# ## Unindo o terceiro elemento da lista
+# for(i in 1:length(out)){
+#   purrr::pluck(out, i, 3)<-paste0(purrr::pluck(out, i, 3), collapse = ",")
+# }
+# 
+# ## Transformando em um dataframe para unir à outra base
+# df_metadata <- do.call(rbind.data.frame, out)
 
-## Unindo o terceiro elemento da lista
-for(i in 1:length(out)){
-  purrr::pluck(out, i, 3)<-paste0(purrr::pluck(out, i, 3), collapse = ",")
+if(params$use_db == "T"){
+  
+}else{
+  
 }
-
-## Transformando em um dataframe para unir à outra base
-df_metadata <- do.call(rbind.data.frame, out)
+df_metadata <- dplyr::tbl(steamdb, "db_base_3_metadata") |> 
+  dplyr::collect()
 
 ## Adicionando coluna de tags do df_metadata, e adicionando colunas de categoria, genero e tags extra do df anterior
-df_base_3_complete <- dplyr::left_join(df_base_3, df_metadata, by = "app_id") |> 
+df_base_3_complete <- dplyr::left_join(df_base_3_raw, df_metadata, by = "app_id") |> 
   dplyr::select(-description)
 ```
 
@@ -100,10 +116,17 @@ notGames_col <- paste0(notGames, collapse = "|")
 
 ## Filtrando categorias consideradas não jogos
 ## mode = 2, comparação com tags
-df_games_selTags <- func_filter_not_games(df_base_3_complete, notGames_col, mode = 2)
+df_games_selTags <- func_filter_not_games(df_base_3_complete, notGames_col, mode = 2, dbplyr = F)
+```
 
+```{r, escrevendo-tabela-db3, echo=F, message=FALSE, include = FALSE}
 if(params$overwrite_tables == "T"){
-  data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
+  if(params$use_db == "T"){
+    func_write_db(df_name = "db_base_3_clean", df = df_games_selTags, con = steamdb, overwrite = T, 
+                index_list = "", debug = params$debug)
+  }else{
+    data.table::fwrite(df_games_selTags, here::here("data-raw/created-tables/db-games-3.csv"))
+  }
 }
 ```
 

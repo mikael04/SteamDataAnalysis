@@ -1,5 +1,5 @@
 ---
-title: "Analise Exploratoria"
+title: "Analisando preços e categorias no sucesso dos jogos da Steam"
 author: "Mikael M Coletto"
 date: "06/30/2023"
 toc: true
@@ -12,10 +12,19 @@ reference-location: margin
 code-fold: true
 code-tools: 
   source: https://github.com/mikael04/SteamDataAnalysis.git
+format:
+  html:
+    output-file: index.html
+  docx: 
+    toc: true
+    number-sections: true
+    highlight-style: github
 params:
   run_all_code: "T"
   overwrite_tables: "T"
-output-file: index.html
+  use_db: "T"
+  debug: "F"
+teste_interno: "F"
 ---
 
 ```{r setup, include=FALSE}
@@ -27,15 +36,21 @@ output-file: index.html
 source(here::here("R/fct-auxiliares/fct_order_strings.R"))
 source(here::here("R/fct-auxiliares/fct_filter_top.R"))
 source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+source(here::here("R/fct-auxiliares/fct_write_db.R"))
 ## Librarys
 library(ggplot2)
 library(dplyr)
+library(DBI)
 
 ## Switch para reescrever tabelas iniciais
 # switch_overwrite_tables <- T
 
+## Conexão com o SQLite local (base de dados)
+steamdb <- dbConnect(RSQLite::SQLite(), here::here("data-raw/steamdb.sqlite"))
+
 print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
 ```
+
 
 # Análise dos dados da Steam
 
@@ -99,8 +114,13 @@ Agora que já uni as duas bases, e tenho uma quantidade mais razoável de jogos 
 
 ```{r, categs-count}
 if(params$run_all_code == "F"){
-  df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+  if(params$use_mongodb == "T"){
+    my_collection = mongolite::mongo(collection = "db-all-games-tags-all", db = "Steam", url = url_srv)
+  }else{
+    df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+  }
 }
+
 rows_categ <- df_all_games |> 
   dplyr::filter(!(is.na(categories)) & categories != "") |> 
   nrow()
@@ -174,6 +194,9 @@ Vou agora me debruçar sobre as faixas de preços e em seguida farei um cruzamen
 #| child: "capitulos/9-price-tags.qmd"
 ```
 
+```{r, finalizando-con}
+dbDisconnect(steamdb)
+```
 ## Conclusão
 
 Ao finalizar essa análise descritiva dos dados de jogos da Steam, pude chegar à algumas conclusões, principalmente após as análises referentes a preços e categorias.
