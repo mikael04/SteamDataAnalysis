@@ -22,7 +22,9 @@ format:
 params:
   run_all_code: "T"
   overwrite_tables: "T"
-  use_mongodb: "T"
+  use_db: "T"
+  debug: "F"
+teste_interno: "F"
 ---
 
 ```{r setup, include=FALSE}
@@ -34,9 +36,11 @@ params:
 source(here::here("R/fct-auxiliares/fct_order_strings.R"))
 source(here::here("R/fct-auxiliares/fct_filter_top.R"))
 source(here::here("R/fct-auxiliares/fct_filter_not_games.R"))
+source(here::here("R/fct-auxiliares/fct_write_db.R"))
 ## Librarys
 library(ggplot2)
 library(dplyr)
+library(DBI)
 
 ## Switch para reescrever tabelas iniciais
 # switch_overwrite_tables <- T
@@ -47,11 +51,6 @@ steamdb <- dbConnect(RSQLite::SQLite(), here::here("data-raw/steamdb.sqlite"))
 print(paste0("Parametro de reescrita de tabelas = ", params$overwrite_tables))
 ```
 
-
-```{r}
-#| eval: !expr params$use_mongodb=="T"
-#| child: "capitulos/0-mongoDB-conn.qmd"
-```
 
 # Análise dos dados da Steam
 
@@ -195,6 +194,9 @@ Vou agora me debruçar sobre as faixas de preços e em seguida farei um cruzamen
 #| child: "capitulos/9-price-tags.qmd"
 ```
 
+```{r, finalizando-con}
+dbDisconnect(steamdb)
+```
 ## Conclusão
 
 Ao finalizar essa análise descritiva dos dados de jogos da Steam, pude chegar à algumas conclusões, principalmente após as análises referentes a preços e categorias.

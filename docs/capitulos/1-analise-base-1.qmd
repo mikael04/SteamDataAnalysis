@@ -1,6 +1,8 @@
 ---
 params:
   overwrite_tables: "F"
+  use_db: "T"
+  debug: "T"
 ---
 ```{r, header-base-1, echo=FALSE, message=FALSE}
 ########################################################################################## #
@@ -36,9 +38,13 @@ Esta base de dados se encontra no Kaggle, através deste link:
 Usarei o Skimr para a base de dados completa e verificarei quais dados podem ser melhor investigados. Essa função faz um resumo geral das variáveis e é bem útil para uma primeira visualização.
 
 ```{r, DBCon, echo = T, result = 'hide', message = F, warning = F, error = F}
-
-db_base_1_raw <- dplyr::tbl(steamdb, "db_base_1_raw") |> 
-  dplyr::collect()
+## Inserindo dados da base 1 raw
+if(params$use_db == "T"){
+  df_base_1_raw <- dplyr::tbl(steamdb, "db_base_1_raw") |> 
+    dplyr::collect()
+}else{
+  db_games_1_raw <- data.table::fread(here::here("data-raw/steam-data/db-1/games.csv"))
+}
 ```
 
 ```{r, skimr}
@@ -55,7 +61,7 @@ Para padronizar os nomes das variáveis, será utilizado o pacote `janitor`, que
 ## Usaremos a função do Janitor para editar os nomes das colunas e torná-las mais fáceis de serem manipuladas
 ## E então faremos a seleção das colunas que serão analisadas
 
-df_selected <- db_base_1_raw |> 
+df_selected <- df_base_1_raw |> 
   janitor::clean_names() |>
   dplyr::select(app_id, name, developers, publishers, categories, genres, tags, release_date, estimated_owners, peak_ccu, price, windows, mac, linux, metacritic_score, user_score, positive, negative, recommendations, average_playtime_forever, median_playtime_forever, average_playtime_two_weeks, median_playtime_two_weeks)
 ```
@@ -162,12 +168,19 @@ df_dupli <- df_selected_tags |>
 df_selected_tags <- df_selected_tags |> 
   dplyr::arrange(name, desc(as.integer(estimated_owners)), desc(overall)) |> 
   dplyr::distinct(name, .keep_all = T)
+```
+```{r, escrevendo-tabela-db1, echo=F, message=FALSE, include = FALSE}
+
 if(params$overwrite_tables == "T"){
-  # data.table::fwrite(df_selected_tags, here::here("data-raw/created-tables/db-games-1.csv"))
-  func_write_db(df_name = "db-games-1", df = df_selected_tags, con = steamdb, overwrite = T, 
-                index_list = "", debug = T)
+  if(params$use_db == "T"){
+    func_write_db(df_name = "db_base_1_clean", df = df_selected_tags, con = steamdb, overwrite = T, 
+                index_list = "", debug = params$debug)
+  }else{
+    data.table::fwrite(df_selected_tags, here::here("data-raw/created-tables/db-games-1.csv"))
+  }
 }
 ```
+
 
 Então esta nova regra criada respeitará primeiro o número de jogadores, o jogo que possuir mais jogadores permanecerá na base, e segundo, em caso de empate no número de jogadores, será mantido o jogo com melhor avaliação.
 

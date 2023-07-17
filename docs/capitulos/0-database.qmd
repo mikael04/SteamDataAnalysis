@@ -9,6 +9,7 @@
 ## 0.1 - Bibliotecas e scripts fontes----
 # library(mongolite)
 library(dbplyr)
+source(here::here("R/fct-auxiliares/fct_write_db.R"))
 ```
 
 ## MongoDB
@@ -164,10 +165,11 @@ dbplyr::db_copy_to(steamdb, "db_base_1_raw", db_games_1_raw, overwrite = T, temp
                      "Genres",
                      "Tags")
                    )
-# dbRemoveTable(steamdb, "db_base_1")
+# dbRemoveTable(steamdb, "db_games_3")
 
 ## Inserindo dados da base 3 raw
-db_games_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv"))
+db_games_3_raw <- data.table::fread(here::here("data-raw/steam-data/db-3/games.csv")) |> 
+  dplyr::mutate(date_release = as.character(date_release))
 dbWriteTable(steamdb, "db_base_3_raw", db_games_3_raw, overwrite = T, temporary = F,
                    indexes = list(
                      "app_id",
@@ -190,6 +192,22 @@ dbWriteTable(steamdb, "db_base_3_recommendations", db_games_3_rec, overwrite = T
                      "price_original")
                    )
 
+## Inserindo dados da base 3 metadados
+out <- lapply(readLines(here::here("data-raw/steam-data/db-3/games_metadata.json")), fromJSON)
+
+## Unindo o terceiro elemento da lista
+for(i in 1:length(out)){
+  purrr::pluck(out, i, 3)<-paste0(purrr::pluck(out, i, 3), collapse = ",")
+}
+
+## Transformando em um dataframe para unir à outra base
+df_metadata <- do.call(rbind.data.frame, out)
+## Escrevendo no SQLite
+dbWriteTable(steamdb, "db_base_3_metadata", df_metadata, overwrite = T, temporary = F,
+                   indexes = list(
+                     "app_id",
+                     "tags")
+                   )
 dbListTables(steamdb)
 
 dbGetQuery(steamdb, 'SELECT * FROM db_base_1 LIMIT 5')
