@@ -152,7 +152,7 @@ df_tags_na_3$tags_extra <- df_tags_na_3$tags
 df_tags_equal <- rbind(df_tags_equal, df_tags_na_1, df_tags_na_3)
 ```
 
-##### Visualzando tags mais frequentes
+##### Visualizando tags mais frequentes
 
 Após a organização e limpeza das tags, vou começar com uma visualização simples para identificar as tags mais utilizadas (e as menos utilizadas). Outro detalhe é que farei uma junção, agora da tabela com as tags diferentes e com as que defini como tags iguais.
 

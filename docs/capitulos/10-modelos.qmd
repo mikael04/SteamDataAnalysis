@@ -1,12 +1,17 @@
 ```{r, trainning-steam-data}
 
-# df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
+df_all_games <- data.table::fread(here::here("data-raw/created-tables/db-all-games-tags-all.csv"))
 
 library(tidymodels)      # for the recipes package, along with the rest of tidymodels
 
 # Helper packages
 library(nycflights13)    # for flight data
 library(skimr)           # for variable summaries
+
+## Source functions
+
+
+source("../../R/fct-auxiliares/fct_filter_top.R")
 
 df_games_sample <- df_all_games |> 
   # dplyr::slice_sample(n = 1000) |> 
